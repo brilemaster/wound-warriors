@@ -77,7 +77,7 @@ function drawBtn(b){if(b.hidden)return;const oy=b===pressed?3:0,r=Math.min(14,b.
  const tc=b.disabled?C.gray:(b.tc===C.white&&lum(fill)>.62?C.ink:b.tc);txt(b.label,b.x+b.w/2,b.y+oy+b.h/2+(b.sub?-6:0),b.size,tc);if(b.sub)txt(b.sub,b.x+b.w/2,b.y+oy+b.h/2+9,16,tc,'center',VT);}
 
 /* ---------- audio ---------- */
-let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v22 · patients';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v23 · funny files';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 
 const SILENT=(()=>{const n=1600,buf=new Uint8Array(44+n),dv=new DataView(buf.buffer),w=(o,s)=>{for(let i=0;i<s.length;i++)buf[o+i]=s.charCodeAt(i);};w(0,'RIFF');dv.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,8000,true);dv.setUint32(28,8000,true);dv.setUint16(32,1,true);dv.setUint16(34,8,true);w(36,'data');dv.setUint32(40,n,true);buf.fill(128,44);let s='';for(const b of buf)s+=String.fromCharCode(b);return 'data:audio/wav;base64,'+btoa(s);})();
 function initAudio(){
@@ -222,7 +222,7 @@ const ALL=CHARS.concat(DREAM);
 const dreamBy=n=>DREAM.find(d=>d.name===n);
 const crew=()=>DREAM.filter(d=>!G||d!==G.char);
 
-/* ===== Patient deck: 31 wound care cases + 7 "not wound care" cases to refer out =====
+/* ===== Patient deck: 47 wound care cases + 11 "not wound care" cases to refer out =====
  steps: A=measure, C=cleanse, D=debride/remove debris, R=dress, Q=clinical decision.  deb: what gets removed. look: wound appearance. */
 const SC=(t,loc,story,drain,dr,L,W,steps,q,o={})=>Object.assign({t,loc,story,drain,dr,L,W,steps,q},o);
 const SCENARIOS=[
@@ -257,6 +257,23 @@ const SCENARIOS=[
  SC('Knee replacement incision','Right knee',"Just checking my new knee incision!",'None','contact',4.4,1.2,'ACRQ',['Looks good! Teach them to watch for...','Redness, warmth, or drainage','New freckles','Hair growth'],{look:'cut'}),
  SC('Skate park fall','Left elbow',"I tried a trick at the skate park. The ground won.",'Moderate','foam',3.0,2.6,'CDRQ',['Gravel is out. One more check...','Tetanus status','Their skateboard brand','Their trick name'],{deb:'gravel',n:4,look:'scrape'}),
  SC('Curling iron burn','Neck',"My curling iron slipped. Hair looks great though.",'Light','hydrogel',2.2,1.4,'CRQ',['Small burn. Keep it...','Clean and moist','Covered in toothpaste','Open to dirt'],{look:'burn'}),
+ // The funny files: real wound care, ridiculous backstories
+ SC('Stepped on a LEGO','Right foot',"I stepped on my kid's LEGO in the dark. I screamed so loud the dog left.",'None','hydrocolloid',1.8,1.6,'DCRQ',['Tiny foot puncture. Best prevention?','Slippers at night (and a toy bin)','Walk on LEGOs to toughen up','Sleep standing up'],{deb:'lego',n:1,look:'lego'}),
+ SC('Glitter bomb','Left forearm',"The kids' craft glitter exploded and I fell into the table. I sparkle now.",'Light','foam',3.6,2.6,'CDRQ',['Glitter in a wound. Final check?','Rinse well and look for leftover bits','Add more glitter for luck','Leave it, it is festive'],{deb:'glitter',n:7,look:'scrape'}),
+ SC('Cactus hug','Right forearm',"I tripped and hugged a cactus. It did NOT hug back.",'Light','contact',3.4,2.4,'DCRQ',['Lots of tiny punctures. Watch for...','Redness or pus over the next few days','The cactus feeling rejected','Flowers sprouting'],{deb:'spine',n:6,look:'prick'}),
+ SC('Waffle iron burn','Left hand',"I flipped the waffle with my bare hand. Now I AM the waffle.",'Light','hydrogel',3.0,2.4,'QCR',['Fresh burn! First thing to do?','Cool running water','Pour maple syrup on it','Rub butter on it'],{look:'waffle'}),
+ SC('Hot glue gun burn','Right finger',"Me vs. a Pinterest project. Pinterest won.",'Light','hydrogel',1.8,1.4,'CRQ',['Small burn with a blister. Best plan?','Keep the blister intact and covered','Hot glue it shut','Peel the blister off'],{look:'burn'}),
+ SC('Trampoline rug burn','Right knee',"I tried a backflip at my nephew's party. It was mostly a front-flop.",'Moderate','foam',3.6,2.8,'CRQ',['Friction burn. Help it heal by...','Keeping it moist and covered','One more backflip','Sanding it smooth'],{look:'scrape'}),
+ SC('Rooster ambush','Left calf',"The farm rooster has decided I am his mortal enemy.",'Light','contact',2.8,2.0,'ACRQ',['Bird scratch on a farm. Check...','Tetanus status','The rooster\'s mood','Egg prices'],{look:'scrape'}),
+ SC('Jellyfish sting','Right leg',"A jellyfish wrapped around my leg like a scarf!",'None','hydrogel',4.2,2.4,'QCR',['Jellyfish sting! First move?','Rinse it (vinegar or seawater) and remove tentacles carefully','Rub sand on it','Ask the jellyfish to apologize'],{look:'jelly'}),
+ SC('Crab pinch','Left big toe',"A crab grabbed my toe and would NOT let go.",'Light','contact',2.0,1.2,'CRQ',['Small beach cut. Keep it...','Clean and covered','Packed with sand','Soaking in a tide pool'],{look:'cut'}),
+ SC('Wooden spoon splinter','Right palm',"Grandma's 50-year-old wooden spoon finally fought back.",'None','hydrocolloid',1.8,1.4,'DCR',null,{deb:'splinter',n:1,look:'puncture'}),
+ SC('Toddler bite','Right forearm',"My toddler bit me at pickup. She says I'm delicious.",'Light','contact',2.4,1.8,'ACRQ',['Human bites get infected easily. Teach them to watch for...','Redness, swelling, or pus','New baby teeth','More biting'],{look:'bite',cl:'Irrigate the bite well. Rub back and forth to flush it out!'}),
+ SC("S'mores burn",'Left thumb',"My flaming marshmallow flung right onto my thumb.",'Light','hydrogel',1.8,1.4,'CRQ',['Small burn. Cool it with...','Cool running water','The marshmallow','Campfire smoke'],{look:'burn'}),
+ SC('Parrot bite','Left ear',"My parrot bit my ear, then said 'pretty bird.'",'Light','hydrocolloid',1.8,1.4,'CRQ',['Bird bite. Check...','Tetanus status','The parrot\'s vocabulary','Earring options'],{look:'bite'}),
+ SC('Hot tub entrance','Left shin',"I tried to step into the hot tub looking cool. I did not look cool.",'Moderate','foam',3.8,2.0,'ACRQ',['Shin wounds heal slower in people with...','Diabetes or poor circulation','A love of hot tubs','Cool sunglasses'],{look:'cut'}),
+ SC('Rollerblade comeback','Right palm',"I brought rollerblading back at 42. The sidewalk disagreed.",'Moderate','foam',3.2,2.6,'CDRQ',['Gravel is out! Last check...','Tetanus status','What year it is','Kneepad fashion'],{deb:'gravel',n:4,look:'scrape'}),
+ SC('Pickleball dive','Right knee',"I dove for a pickleball. Won the point, lost the skin.",'Moderate','foam',3.4,2.8,'CDRQ',['Gravel is out! One more check...','Tetanus status','Their pickleball ranking','The paddle brand'],{deb:'gravel',n:5,look:'scrape'}),
  // Not wound care: the right call is REFER OUT
  SC('Chest pain','Chest',"My chest feels tight and I'm sweating a lot...",'None','gauze',2,2,'',null,{refer:'the ER'}),
  SC('Snake bite','Right ankle',"A snake bit my ankle on the hiking trail!",'None','gauze',2,2,'',null,{refer:'the ER'}),
@@ -264,13 +281,17 @@ const SCENARIOS=[
  SC('Fever and red streaks','Left leg',"I have a fever and red streaks are running up my leg.",'None','gauze',2,2,'',null,{refer:'the ER'}),
  SC('Toothache','Mouth',"My tooth is KILLING me!",'None','gauze',2,2,'',null,{refer:'a dentist'}),
  SC('Bent arm','Left arm',"I fell off a ladder and my arm looks... bent.",'None','gauze',2,2,'',null,{refer:'the ER for X-rays'}),
- SC('Heavy bleeding','Right hand',"This cut won't stop bleeding, even with pressure!",'None','gauze',2,2,'',null,{refer:'the ER'})
+ SC('Heavy bleeding','Right hand',"This cut won't stop bleeding, even with pressure!",'None','gauze',2,2,'',null,{refer:'the ER'}),
+ SC('Hiccups','Belly',"I've had the hiccups for three days straight. *hic*",'None','gauze',2,2,'',null,{refer:'their doctor'}),
+ SC('Broken heart','Heart',"My crush left me on read. It hurts SO bad.",'None','gauze',2,2,'',null,{refer:'a best friend and ice cream'}),
+ SC('Wi-Fi down','The router',"My Wi-Fi is down. Can you put a dressing on the router?",'None','gauze',2,2,'',null,{refer:'IT'}),
+ SC('Bad haircut','Head',"My barber gave me a mullet. Is there a dressing for this?",'None','gauze',2,2,'',null,{refer:'a new barber'})
 ];
 const PATIENTS=SCENARIOS;
 const LASTNAMES=['Delgado','Okafor','Petrakis','Lindqvist','Abernathy','Nguyen','Kowalski','Brennan','Castillo','Haddad','Moreau','Tanaka','Whitfield','Oyelaran','Fitzgerald','Bianchi','Sandoval','Lindgren','Mbeki','Romero','Kaplan','Duarte','Ivanova','McAllister','Ferreira','Novak','Ashworth','Quintero','Halvorsen','Pemberton'];
 const DRAIN_NOTE={None:'Dry wound bed',Light:'Light drainage',Moderate:'Moderate drainage',Heavy:'Heavy drainage, soaking through'};
-const DEB_TXT={slough:"Pluck the yellow & gray slough. Don't touch the healthy pink tissue!",gravel:"Pick out every bit of gravel. Don't poke the tender tissue!",stinger:'Pluck out the stinger. Steady hands!',thorn:'Remove the broken thorn. Gently!',hook:'Ease the fish hook out. Careful!'};
-const DEB_COL={slough:['#e8cf6a','#b9b3a3'],gravel:['#5f6368','#7a7f86','#4a4f55'],stinger:['#1d1d1d'],thorn:['#6b3e1f'],hook:['#9aa3ad']};
+const DEB_TXT={slough:"Pluck the yellow & gray slough. Don't touch the healthy pink tissue!",gravel:"Pick out every bit of gravel. Don't poke the tender tissue!",stinger:'Pluck out the stinger. Steady hands!',thorn:'Remove the broken thorn. Gently!',hook:'Ease the fish hook out. Careful!',lego:'Pry out the LEGO piece. Ouch ouch ouch!',glitter:'Pick out ALL the glitter. It gets everywhere!',spine:'Pluck every cactus spine. Don\'t poke!',splinter:'Ease out the spoon splinter. Gently!'};
+const DEB_COL={slough:['#e8cf6a','#b9b3a3'],gravel:['#5f6368','#7a7f86','#4a4f55'],stinger:['#1d1d1d'],thorn:['#6b3e1f'],hook:['#9aa3ad'],lego:['#e3342f','#3a97d8','#ffd23f'],glitter:['#ff5fd2','#4cd3ff','#ffe066','#8fc15a','#b388ff'],spine:['#d9cf9a'],splinter:['#b07a3e']};
 const DRESSINGS=[{id:'foam',l1:'FOAM',l2:'',name:'Foam'},{id:'alginate',l1:'ALGINATE',l2:'',name:'Alginate'},{id:'hydrocolloid',l1:'HYDRO-',l2:'COLLOID',name:'Hydrocolloid'},{id:'hydrogel',l1:'HYDRO-',l2:'GEL',name:'Hydrogel'},{id:'silver',l1:'SILVER',l2:'(ANTIMICROB)',name:'Silver'},{id:'contact',l1:'CONTACT',l2:'LAYER',name:'Contact layer'},{id:'gauze',l1:'DRY',l2:'GAUZE',name:'Dry gauze'}];
 const dName=id=>DRESSINGS.find(d=>d.id===id).name;
 const ITEMS=['coworker','coffee','snack'];
@@ -285,8 +306,10 @@ function makeWound(p){const rx=p.L*PXCM/2,ry=p.W*PXCM/2,s1=rand(0,6),s2=rand(0,6
  else if(lk==='bite')for(let i=0;i<4;i++){marks.push([CX-rx*.55+i*rx*.37,CY-ry*.62,3]);marks.push([CX-rx*.45+i*rx*.32,CY+ry*.62,3]);}
  else if(lk==='frost')for(let i=0;i<22;i++){const[mx,my]=inside(1.1);marks.push([mx,my,rand(1,2.5)]);}
  else if(lk==='eschar')for(let i=0;i<5;i++){const[mx,my]=inside(.6);marks.push([mx,my,rand(6,12),rand(0,3)]);}
+ else if(lk==='prick')for(let i=0;i<14;i++){const[mx,my]=inside(.95);marks.push([mx,my,rand(1.2,2.2)]);}
+ else if(lk==='jelly')for(let i=0;i<4;i++)marks.push([CY-ry*.6+i*ry*.4,rand(0,6),rand(3,5)]);
  return{rx,ry,pts,bumps,lk,marks};}
-const ICON_RULES=[[/dog|leash/i,'🐕'],[/cat/i,'🐈'],[/goat/i,'🐐'],[/bee|sting/i,'🐝'],[/snake/i,'🐍'],[/spider/i,'🕷️'],[/fish/i,'🎣'],[/thorn|ros/i,'🌹'],[/scooter|car/i,'🛴'],[/skate/i,'🛹'],[/trail|root/i,'🌲'],[/mower/i,'🌱'],[/frost|ice/i,'❄️'],[/sun|beach/i,'☀️'],[/pan|burn|exhaust|curling|iron/i,'🔥'],[/chemical|pool/i,'🧪'],[/paper|chart/i,'📄'],[/shoe|blister/i,'👟'],[/diabet/i,'🦶'],[/chest/i,'💓'],[/tooth/i,'🦷'],[/ladder|bent/i,'🪜'],[/bleed/i,'🩸'],[/fever|streak/i,'🤒'],[/surg|incision|knee/i,'🩺'],[/toenail/i,'🦶'],[/pressure|bed|heel/i,'🛏️'],[/venous|leg|ankle/i,'🦵']];
+const ICON_RULES=[[/lego/i,'🧱'],[/glitter/i,'✨'],[/cactus/i,'🌵'],[/waffle/i,'🧇'],[/glue/i,'🎨'],[/trampoline/i,'🤸'],[/rooster/i,'🐓'],[/jelly/i,'🪼'],[/crab/i,'🦀'],[/spoon/i,'🥄'],[/toddler/i,'👶'],[/mores/i,'🏕️'],[/parrot/i,'🦜'],[/hot tub/i,'🛁'],[/rollerblad/i,'🛼'],[/pickleball/i,'🏓'],[/hiccup/i,'😮'],[/heart/i,'💔'],[/wi-fi/i,'📶'],[/haircut|mullet/i,'💇'],[/dog|leash/i,'🐕'],[/cat/i,'🐈'],[/goat/i,'🐐'],[/bee|sting/i,'🐝'],[/snake/i,'🐍'],[/spider/i,'🕷️'],[/fish/i,'🎣'],[/thorn|ros/i,'🌹'],[/scooter|car/i,'🛴'],[/skate/i,'🛹'],[/trail|root/i,'🌲'],[/mower/i,'🌱'],[/frost|ice/i,'❄️'],[/sun|beach/i,'☀️'],[/pan|burn|exhaust|curling|iron/i,'🔥'],[/chemical|pool/i,'🧪'],[/paper|chart/i,'📄'],[/shoe|blister/i,'👟'],[/diabet/i,'🦶'],[/chest/i,'💓'],[/tooth/i,'🦷'],[/ladder|bent/i,'🪜'],[/bleed/i,'🩸'],[/fever|streak/i,'🤒'],[/surg|incision|knee/i,'🩺'],[/toenail/i,'🦶'],[/pressure|bed|heel/i,'🛏️'],[/venous|leg|ankle/i,'🦵']];
 const STEP_SCENE=()=>({A:Assess,C:Cleanse,D:Debride,R:Dress,Q:Decide});
 function makePatient(sc){const fr=[];for(let i=0;i<46;i++)fr.push([rand(26,334),rand(134,414)]);const txt_=sc.t+' '+sc.story;const ico=(ICON_RULES.find(([re])=>re.test(txt_))||[0,'🩹'])[1];
  const steps=(sc.steps||'').split('').filter(Boolean);
@@ -460,7 +483,7 @@ function drawBed(x,y,pt,state,t){
  ctx.globalAlpha=.25;for(let k=0;k<2;k++)rect(x+44+k*9,y+5,2,21,'#ffffff');ctx.globalAlpha=1;
  if(pt.ico&&state!=='npc'){rr(x+44,y+7,18,18,9);ctx.fillStyle='rgba(255,255,255,.9)';ctx.fill();emo(pt.ico,x+53,y+16,12);}
  if(state==='done')emo('💗',x+32,y-10+Math.sin(t*3)*2,13);
- if(state==='current')txtS('!',x+32,y-12+Math.sin(t*6)*3,12,C.gold);
+ if(state==='current'){txtS('!',x+32,y-12+Math.sin(t*6)*3,12,C.gold);for(let k=0;k<3;k++){const a=t*3+k*2.094,sx=x+11+Math.cos(a)*10,sy=y+4+Math.sin(a)*3.5;ctx.beginPath();for(let j=0;j<10;j++){const r_=j%2?1.4:3.4,aa=j*Math.PI/5-Math.PI/2;ctx.lineTo(sx+Math.cos(aa)*r_,sy+Math.sin(aa)*r_);}ctx.closePath();ctx.fillStyle='#ffd23f';ctx.fill();ctx.strokeStyle=C.ink;ctx.lineWidth=.8;ctx.stroke();}}
 }
 
 function drawPatch(p){
@@ -468,16 +491,20 @@ function drawPatch(p){
  rect(20,410,320,10,shade(p.skin,-.1));{const g=ctx.createRadialGradient(CX,CY,60,CX,CY,230);g.addColorStop(0,'rgba(20,10,30,0)');g.addColorStop(1,'rgba(20,10,30,.32)');ctx.fillStyle=g;ctx.fillRect(20,128,320,292);}rect(286,402,26,3,C.ink);txt('1 cm',299,394,15,C.ink,'center',VT);
 }
 function polyPath(pts,sc=1){ctx.beginPath();pts.forEach(([x,y],i)=>{const X=CX+(x-CX)*sc,Y=CY+(y-CY)*sc;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.closePath();}
-const WOUND_COL={ulcer:['#a83a4f','#e05a6d','#f2879a'],burn:['#d9604f','#ff8f78','#ffc4b4'],scrape:['#c0454c','#ee6d70','#ffb0a8'],bite:['#a83a4f','#e05a6d','#f2879a'],puncture:['#8f2f40','#d24f62','#f2879a'],cut:['#a83a4f','#e05a6d','#f2879a'],eschar:['#4a3328','#2a1d18','#5a4034'],frost:['#6a4c96','#a988d0','#e6dcf5']};
+const WOUND_COL={ulcer:['#a83a4f','#e05a6d','#f2879a'],burn:['#d9604f','#ff8f78','#ffc4b4'],scrape:['#c0454c','#ee6d70','#ffb0a8'],bite:['#a83a4f','#e05a6d','#f2879a'],puncture:['#8f2f40','#d24f62','#f2879a'],lego:['#8f2f40','#d24f62','#f2879a'],prick:['#c0454c','#ee8a86','#ffc0b8'],waffle:['#d9604f','#ff8f78','#ffc4b4'],jelly:['#c0456a','#f07d9a','#ffc0d0'],cut:['#a83a4f','#e05a6d','#f2879a'],eschar:['#4a3328','#2a1d18','#5a4034'],frost:['#6a4c96','#a988d0','#e6dcf5']};
 function drawWound(p){const w=p.wound,lk=w.lk||'ulcer',c=WOUND_COL[lk]||WOUND_COL.ulcer;
- polyPath(w.pts,1.25);ctx.fillStyle=lk==='burn'||lk==='scrape'?'rgba(230,90,80,.28)':lk==='frost'?'rgba(150,170,230,.35)':shade(p.skin,-.14);ctx.fill();
+ polyPath(w.pts,1.25);ctx.fillStyle=lk==='burn'||lk==='scrape'||lk==='waffle'||lk==='jelly'||lk==='prick'?'rgba(230,90,80,.28)':lk==='frost'?'rgba(150,170,230,.35)':shade(p.skin,-.14);ctx.fill();
  polyPath(w.pts,1.08);ctx.fillStyle=c[0];ctx.fill();polyPath(w.pts,1);ctx.fillStyle=c[1];ctx.fill();
- if(lk!=='eschar'&&lk!=='cut')for(const b of w.bumps)rect(b[0],b[1],3,3,c[2]);
+ if(lk!=='eschar'&&lk!=='cut'&&lk!=='waffle'&&lk!=='jelly')for(const b of w.bumps)rect(b[0],b[1],3,3,c[2]);
  if(lk==='burn')for(const[mx,my,r]of w.marks){ctx.beginPath();ctx.arc(mx,my,r,0,7);ctx.fillStyle='rgba(255,247,230,.75)';ctx.fill();ctx.strokeStyle='rgba(180,80,60,.6)';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='rgba(255,255,255,.9)';ctx.beginPath();ctx.arc(mx-r*.35,my-r*.35,r*.25,0,7);ctx.fill();}
  else if(lk==='scrape'){ctx.strokeStyle='rgba(150,30,40,.55)';ctx.lineWidth=1.5;ctx.lineCap='round';for(const[mx,my,l]of w.marks)line({x:mx-l/2,y:my-l*.12},{x:mx+l/2,y:my+l*.12});}
  else if(lk==='bite')for(const[mx,my,r]of w.marks){ctx.beginPath();ctx.arc(mx,my,r,0,7);ctx.fillStyle='#5a1420';ctx.fill();}
  else if(lk==='puncture'){ctx.beginPath();ctx.arc(CX,CY,3.5,0,7);ctx.fillStyle='#4a0f1a';ctx.fill();}
  else if(lk==='cut'){ctx.strokeStyle='#5a1420';ctx.lineWidth=2.5;line({x:CX-w.rx*.9,y:CY},{x:CX+w.rx*.9,y:CY});if(/incision/i.test(p.t||'')){ctx.strokeStyle='#1d1626';ctx.lineWidth=1.6;for(let k=-3;k<=3;k++){const sx=CX+k*w.rx*.26;line({x:sx-3,y:CY-w.ry-3},{x:sx+3,y:CY+w.ry+3});line({x:sx+3,y:CY-w.ry-3},{x:sx-3,y:CY+w.ry+3});}}}
+ else if(lk==='lego'){ctx.fillStyle='#5a1420';for(const[dx,dy]of[[-1,-1],[1,-1],[-1,1],[1,1]]){ctx.beginPath();ctx.arc(CX+dx*w.rx*.38,CY+dy*w.ry*.38,2.6,0,7);ctx.fill();}}
+ else if(lk==='prick')for(const[mx,my,r]of w.marks){ctx.beginPath();ctx.arc(mx,my,r,0,7);ctx.fillStyle='#5a1420';ctx.fill();}
+ else if(lk==='waffle'){ctx.save();polyPath(w.pts,.96);ctx.clip();const g=w.rx*.42;ctx.fillStyle='rgba(120,25,30,.45)';for(let gx=CX-w.rx*1.2;gx<CX+w.rx*1.2;gx+=g)ctx.fillRect(gx,CY-w.ry*1.2,3.5,w.ry*2.4);for(let gy=CY-w.ry*1.2;gy<CY+w.ry*1.2;gy+=g)ctx.fillRect(CX-w.rx*1.2,gy,w.rx*2.4,3.5);ctx.fillStyle='rgba(255,240,200,.45)';for(let gx=CX-w.rx*1.2+5;gx<CX+w.rx*1.2;gx+=g)for(let gy=CY-w.ry*1.2+5;gy<CY+w.ry*1.2;gy+=g)ctx.fillRect(gx,gy,4,4);ctx.restore();}
+ else if(lk==='jelly'){ctx.save();polyPath(w.pts,1.02);ctx.clip();ctx.lineCap='round';for(const[yy,ph,lw]of w.marks){ctx.strokeStyle='#8c1d3f';ctx.lineWidth=lw+1.5;ctx.beginPath();for(let xx=CX-w.rx*1.1;xx<=CX+w.rx*1.1;xx+=3){const Y=yy+Math.sin(xx*.09+ph)*5;xx===CX-w.rx*1.1?ctx.moveTo(xx,Y):ctx.lineTo(xx,Y);}ctx.stroke();ctx.strokeStyle='rgba(255,220,235,.6)';ctx.lineWidth=1.2;ctx.stroke();}ctx.restore();}
  else if(lk==='frost')for(const[mx,my,r]of w.marks){ctx.beginPath();ctx.arc(mx,my,r,0,7);ctx.fillStyle='rgba(255,255,255,.85)';ctx.fill();}
  else if(lk==='eschar'){ctx.strokeStyle='#120b08';ctx.lineWidth=1.4;for(const[mx,my,l,a]of w.marks)line({x:mx,y:my},{x:mx+Math.cos(a)*l,y:my+Math.sin(a)*l});}}
 function drawRuler(a,b,locked){const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,nx=-uy,ny=ux;ctx.lineCap='butt';
@@ -498,7 +525,7 @@ function drawHUD(){rect(0,0,W,40,'#071322');rect(0,40,W,2,C.ink);
 }
 function drawTrophy(r){rr(r.x,r.y,r.w,r.h,7);ctx.fillStyle=C.gold;ctx.fill();rr(r.x,r.y,r.w,r.h*.45,6);ctx.fillStyle='rgba(255,255,255,.3)';ctx.fill();emo('🏆',r.x+r.w/2,r.y+r.h/2+1,13);}
 function drawMute(){rect(336,6,5,8,C.white);ctx.fillStyle=C.white;ctx.beginPath();ctx.moveTo(341,6);ctx.lineTo(347,2);ctx.lineTo(347,18);ctx.lineTo(341,14);ctx.closePath();ctx.fill();if(muted){ctx.strokeStyle=C.red;ctx.lineWidth=2;line({x:333,y:3},{x:354,y:17});}else{rect(350,7,2,6,C.white);}}
-function careFrame(n,title,instr){rect(0,0,W,H,C.plum);drawHUD();rect(0,42,W,20,C.plum2);{const q=cur();txt('STEP '+(q.si+1)+'/'+q.stepKeys.length+' · '+title,180,53,8,C.gold);}const p=cur();txt(p.name+'  ·  '+p.loc,180,76,20,C.pink2,'center',VT);wrapTxt(instr,180,97,336,19,C.white,17,VT,'center');drawPatch(p);drawFace(p);drawPerson(14,476,3,G.char);loveEmote(32,456,scene.t);powerTag(8,430,52,106,34,425);
+function careFrame(n,title,instr){rect(0,0,W,H,C.plum);drawHUD();rect(0,42,W,20,C.plum2);{const q=cur();txt('STEP '+(q.si+1)+'/'+q.stepKeys.length+' · '+title,180,53,8,C.gold);}const p=cur();txt(p.name+'  ·  '+p.loc,180,76,20,C.pink2,'center',VT);wrapTxt(instr,180,97,336,19,C.white,17,VT,'center');drawPatch(p);if(p.ico){const bob=Math.sin(gT*3);ctx.save();ctx.translate(316,154+bob*2);ctx.rotate(bob*.22);ctx.beginPath();ctx.arc(0,0,17,0,7);ctx.fillStyle='rgba(255,255,255,.75)';ctx.fill();emo(p.ico,0,1,22);ctx.restore();txt('CULPRIT',316,177,5,'rgba(29,22,38,.6)');}drawFace(p);drawPerson(14,476,3,G.char);loveEmote(32,456,scene.t);powerTag(8,430,52,106,34,425);
  txt('★'+p.stars.reduce((a,b)=>a+b,0),346,53,8,C.gold,'right');}
 const REACT_E={ouch:'😣',relief:'😌',happy:'😄',huh:'🤨'};
 function drawFace(p){const r=p.react,k=r&&gT-r.t<1.5?r.kind:'calm';box(26,360,48,48,'#ffffff');ctx.save();ctx.beginPath();ctx.rect(26,360,48,48);ctx.clip();drawMiniHead(31,364,5.6,p,k);ctx.restore();
@@ -666,7 +693,7 @@ const Cleanse={clock:true,care:true,label:'CLEANSE',
 
 const Debride={clock:true,care:true,get label(){return cur().deb==='slough'?'DEBRIDE':'REMOVE';},
  enter(){const p=this.p=cur(),w=p.wound,idx=G.pi;this.blobs=[];for(let i=0;i<p.slough;i++){let bx=CX,by=CY,ok=false;for(let k=0;k<300&&!ok;k++){const a=rand(0,6.283),f=rand(.05,.68);bx=CX+Math.cos(a)*w.rx*f;by=CY+Math.sin(a)*w.ry*f;ok=this.blobs.every(b=>Math.hypot(b.bx-bx,b.by-by)>16);}
-  const dt_=p.deb||'slough',single=p.slough===1;this.blobs.push({bx:single?CX:bx,by:single?CY:by,x:bx,y:by,kind:dt_,r:dt_==='gravel'?rand(5,7):single?7:Math.max(5.5,rand(7.5,9.5)-idx*.5),gold:(dt_==='slough'||dt_==='gravel')&&i>0&&Math.random()<.2,c:pick(DEB_COL[dt_]||DEB_COL.slough),ph:rand(0,6),amp:idx*2.2,sp:1.4+idx*.35,gone:false});}this.slips=0;this.done=0;this.flash=null;this.chain=0;},
+  const dt_=p.deb||'slough',single=p.slough===1;this.blobs.push({bx:single?CX:bx,by:single?CY:by,x:bx,y:by,kind:dt_,r:dt_==='gravel'?rand(5,7):dt_==='glitter'?rand(6,8):dt_==='spine'?7:single?7:Math.max(5.5,rand(7.5,9.5)-idx*.5),gold:(dt_==='slough'||dt_==='gravel'||dt_==='glitter')&&i>0&&Math.random()<.2,c:pick(DEB_COL[dt_]||DEB_COL.slough),ph:rand(0,6),amp:idx*2.2,sp:1.4+idx*.35,gone:false});}this.slips=0;this.done=0;this.flash=null;this.chain=0;},
  update(dt){if(!(G.freezeT>0))this.mt=(this.mt||0)+dt;for(const b of this.blobs){b.x=b.bx+Math.sin(this.mt*b.sp+b.ph)*b.amp;b.y=b.by+Math.cos(this.mt*b.sp*.8+b.ph)*b.amp*.5;}if(this.flash)this.flash.t-=dt;if(this.done&&this.t-this.done>1.3)nextStep();},
  down(q){if(this.done)return;let best=null,bd=1e9;for(const b of this.blobs){if(b.gone)continue;const d=Math.hypot(b.x-q.x,b.y-q.y);if(d<b.r+(G.expertT>0?12:5)&&d<bd){best=b;bd=d;}}
   if(best)this.pluck(best);
@@ -679,11 +706,14 @@ const Debride={clock:true,care:true,get label(){return cur().deb==='slough'?'DEB
  draw(){careFrame(3,this.label,DEB_TXT[this.p.deb]||DEB_TXT.slough);drawWound(this.p);
   for(const b of this.blobs)if(!b.gone){if(G.expertT>0){ctx.strokeStyle=C.teal;ctx.lineWidth=2.5;ctx.globalAlpha=.6+.3*Math.sin(gT*8);ctx.beginPath();ctx.arc(b.x,b.y,b.r+8,0,7);ctx.stroke();ctx.globalAlpha=1;}if(b.gold){ctx.globalAlpha=.35+.25*Math.sin(gT*8);ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(b.x,b.y,b.r+6,0,7);ctx.fill();ctx.globalAlpha=1;}if(b.kind==='hook'){ctx.lineCap='round';ctx.strokeStyle=C.ink;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(b.x+2,b.y-16);ctx.lineTo(b.x+2,b.y+2);ctx.arc(b.x-3,b.y+2,5,0,Math.PI);ctx.stroke();ctx.strokeStyle=b.c;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(b.x+2,b.y-16);ctx.lineTo(b.x+2,b.y+2);ctx.arc(b.x-3,b.y+2,5,0,Math.PI);ctx.stroke();}
    else if(b.kind==='thorn'||b.kind==='stinger'){ctx.beginPath();ctx.moveTo(b.x-6,b.y+5);ctx.lineTo(b.x+6,b.y+5);ctx.lineTo(b.x,b.y-(b.kind==='thorn'?14:9));ctx.closePath();ctx.fillStyle=b.c;ctx.fill();ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.stroke();}
+   else if(b.kind==='lego'){box(b.x-9,b.y-5,18,11,b.c);rect(b.x-6,b.y-9,5,4,C.ink);rect(b.x+1,b.y-9,5,4,C.ink);rect(b.x-5.5,b.y-8.5,4,3.5,b.c);rect(b.x+1.5,b.y-8.5,4,3.5,b.c);rect(b.x-7,b.y-3,4,2,'rgba(255,255,255,.55)');}
+   else if(b.kind==='glitter'){const tw=1+.25*Math.sin(gT*9+b.ph),r=b.r*tw;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.ph+gT*1.5);ctx.beginPath();for(let k=0;k<8;k++){const rr_=k%2?r*.42:r;ctx.lineTo(Math.cos(k*Math.PI/4)*rr_,Math.sin(k*Math.PI/4)*rr_);}ctx.closePath();ctx.fillStyle=b.c;ctx.fill();ctx.strokeStyle=C.ink;ctx.lineWidth=1.2;ctx.stroke();ctx.restore();}
+   else if(b.kind==='spine'||b.kind==='splinter'){const a=b.ph,l=b.kind==='spine'?13:17;ctx.lineCap='round';ctx.strokeStyle=C.ink;ctx.lineWidth=b.kind==='spine'?4:6.5;line({x:b.x,y:b.y},{x:b.x+Math.cos(a)*l,y:b.y+Math.sin(a)*l});ctx.strokeStyle=b.c;ctx.lineWidth=b.kind==='spine'?2:4;line({x:b.x,y:b.y},{x:b.x+Math.cos(a)*l,y:b.y+Math.sin(a)*l});}
    else if(b.kind==='gravel'){ctx.beginPath();for(let k=0;k<6;k++){const a=k/6*6.283+b.ph,rr_=b.r*(.75+.25*Math.sin(k*2.1+b.ph));k?ctx.lineTo(b.x+Math.cos(a)*rr_,b.y+Math.sin(a)*rr_):ctx.moveTo(b.x+Math.cos(a)*rr_,b.y+Math.sin(a)*rr_);}ctx.closePath();ctx.fillStyle=b.gold?'#ffd23f':b.c;ctx.fill();ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.stroke();}
    else{ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(b.x,b.y,b.r+1.5,0,7);ctx.fill();ctx.fillStyle=b.gold?'#ffd23f':b.c;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();rect(b.x-b.r/2,b.y-b.r/2,3,3,'rgba(255,255,255,.6)');}}
   if(this.flash&&this.flash.t>0){ctx.globalAlpha=this.flash.t/.4;ctx.fillStyle=C.red;ctx.beginPath();ctx.arc(this.flash.x,this.flash.y,14,0,7);ctx.fill();ctx.globalAlpha=1;}
   if(ptr.x>20&&ptr.x<340&&ptr.y>128&&ptr.y<420&&!this.done)drawTweezers(ptr.x,ptr.y,ptr.down);
-  const left=this.blobs.filter(b=>!b.gone).length;txt(({gravel:'GRAVEL',stinger:'STINGER',thorn:'THORN',hook:'HOOK'}[this.p.deb]||'SLOUGH')+' LEFT: '+left,80,494,7,C.gold,'left');txt('SLIPS: '+this.slips,80,514,7,this.slips?C.red:C.teal,'left');}
+  const left=this.blobs.filter(b=>!b.gone).length;txt(({gravel:'GRAVEL',stinger:'STINGER',thorn:'THORN',hook:'HOOK',lego:'LEGO',glitter:'GLITTER',spine:'SPINES',splinter:'SPLINTER'}[this.p.deb]||'SLOUGH')+' LEFT: '+left,80,494,7,C.gold,'left');txt('SLIPS: '+this.slips,80,514,7,this.slips?C.red:C.teal,'left');}
 };
 
 const Decide={clock:true,care:true,label:'DECIDE',
@@ -744,7 +774,7 @@ const After={clock:true,
 const POPMSG=['Session timed out.','Required field missing.','Are you sure you want to save?','Your password expires in 3 days.','Allergies not reviewed!','Note is open by another user.'];
 const Chart={clock:true,
  enter(){const p=this.p=cur();Music.play('elevator');const two=a=>shuffle(a).slice(0,2),sz=(L,Wd)=>L.toFixed(1)+' × '+Wd.toFixed(1)+' cm';
-  this.qs=[{q:'Wound location?',tag:'LOC',a:p.loc,o:[p.loc,...two([...new Set(SCENARIOS.map(x=>x.loc))].filter(l=>l!==p.loc))]},
+  this.qs=[{q:'Wound location?',tag:'LOC',a:p.loc,o:[p.loc,...two([...new Set(SCENARIOS.filter(x=>!x.refer).map(x=>x.loc))].filter(l=>l!==p.loc))]},
    {q:'Wound size (L × W)?',tag:'SIZE',a:sz(p.L,p.W),o:[sz(p.L,p.W),sz(p.L+1.2,p.W),sz(p.L,p.W+.9)]},
    {q:'Drainage amount?',tag:'DRAIN',a:p.drain,o:[p.drain,...two(['None','Light','Moderate','Heavy'].filter(d=>d!==p.drain))]},
    {q:'Dressing applied?',tag:'DRSG',a:dName(p.dressing),o:[dName(p.dressing),...two(DRESSINGS.map(d=>d.name).filter(n=>n!==dName(p.dressing)))]}];
