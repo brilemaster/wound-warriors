@@ -77,7 +77,7 @@ function drawBtn(b){if(b.hidden)return;const oy=b===pressed?3:0,r=Math.min(14,b.
  const tc=b.disabled?C.gray:(b.tc===C.white&&lum(fill)>.62?C.ink:b.tc);txt(b.label,b.x+b.w/2,b.y+oy+b.h/2+(b.sub?-6:0),b.size,tc);if(b.sub)txt(b.sub,b.x+b.w/2,b.y+oy+b.h/2+9,16,tc,'center',VT);}
 
 /* ---------- audio ---------- */
-let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v26 · party';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v27.2 · chart!';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 
 const SILENT=(()=>{const n=1600,buf=new Uint8Array(44+n),dv=new DataView(buf.buffer),w=(o,s)=>{for(let i=0;i<s.length;i++)buf[o+i]=s.charCodeAt(i);};w(0,'RIFF');dv.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,8000,true);dv.setUint32(28,8000,true);dv.setUint16(32,1,true);dv.setUint16(34,8,true);w(36,'data');dv.setUint32(40,n,true);buf.fill(128,44);let s='';for(const b of buf)s+=String.fromCharCode(b);return 'data:audio/wav;base64,'+btoa(s);})();
 function initAudio(){
@@ -581,13 +581,13 @@ const Title={enter(){this.buttons=[btn('START',90,404,180,52,()=>{initAudio();Mu
  draw(){const t=this.t;rect(0,0,W,H,C.plum);for(let i=0;i<22;i++){const x=(i*73)%W,y=(i*131+t*14*(1+i%3))%H;ctx.globalAlpha=.16;ctx.fillStyle=BRAND[i%4];rr(x-6,y-2,12,4,1.5);ctx.fill();rr(x-2,y-6,4,12,1.5);ctx.fill();}ctx.globalAlpha=1;
   rr(18,34,324,84,14);ctx.fillStyle=C.ink;ctx.fill();rr(20,32,320,82,12);ctx.fillStyle='#ffffff';ctx.fill();if(LOGO.complete&&LOGO.naturalWidth){const lw=300,lh=lw*LOGO.naturalHeight/LOGO.naturalWidth;ctx.drawImage(LOGO,30,32+(82-lh)/2,lw,lh);}else txtG('integumetrix',180,73,14);
   const bob=Math.sin(t*3)*2;txtG('WOUND WARRIORS',180,146+bob,22);txtS('HEALERS OF THE REALM',180,172,8,C.gold);drawRank(180,192,140);
-  const c=ALL[Math.floor(t/1.4)%ALL.length];drawPerson(50,262,4.6,c,{dance:t,seed:3});loveEmote(78,238,t);txt(c.name.toUpperCase(),78,358,7,C.white);txt(moveName(t,3),78,371,6,C.gold);
+  const c=ALL[Math.floor(t/1.4)%ALL.length];drawPerson(50,262,4.6,c,{dance:t,seed:3});loveEmote(78,238,t);txt(c.name.toUpperCase(),78,358,7,C.white);
   ctx.save();ctx.translate(200,240);ctx.scale(.6,.6);drawBossBody({hp:1,max:1,flash:0},-46,t,140);ctx.restore();stressEmote(272,226,t);
   fitTxt('Heal patients. Survive the charting.',180,390,330,20,C.pink2);if(!AC||AC.state!=='running'){ctx.globalAlpha=.6+.4*Math.sin(t*4);fitTxt('🔊 Tap anywhere to start the music',180,514,330,17,C.white);ctx.globalAlpha=1;}else if(IOS&&!muted)fitTxt('🔊 No sound? Turn off your iPhone’s silent switch',180,514,330,15,C.gray);txt('AN INTEGUMETRIX ARCADE ORIGINAL',180,530,5,C.gray);txt(GAME_VERSION,352,530,5,C.gray,'right');}
 };
 
-const ROYAL_LINES=[['CHOOSE YOUR FIGHTER!','King Brook'],['Choose wisely...','Queen Tisha'],['The EHR awaits.','King Brook'],['Who dares face MEGA-CHART?','Queen Tisha']];
-const Select={enter(){Music.play('funk');this.sel=null;this.hover=null;this.tab='care';this.start=btn('FIGHT!',40,486,280,40,()=>{if(!this.sel)return;newGame(this.sel);go(Ward);},{col:C.red,size:12});this.start.disabled=true;this.start.focus=true;
+const ROYAL_LINES=[['CHOOSE YOUR WARRIOR!','King Brook'],['Choose wisely...','Queen Tisha'],['The EHR awaits.','King Brook'],['Who dares face MEGA-CHART?','Queen Tisha']];
+const Select={enter(){Music.play('funk');this.sel=null;this.hover=null;this.tab='care';this.start=btn("LET'S HEAL!",40,486,280,40,()=>{if(!this.sel)return;newGame(this.sel);go(Ward);},{col:C.red,size:12});this.start.disabled=true;this.start.focus=true;
   this.tabs=[{id:'care',label:'WOUND WARRIORS',x:16,y:58,w:144,h:20},{id:'team',label:'INTEGU DREAMTEAM',x:166,y:58,w:144,h:20}];this.trophy={x:316,y:57,w:30,h:22};this.buttons=[this.start];this.shout=0;},
  list(){return this.tab==='care'?CHARS:DREAM;},
  cell(i){const rows=Math.ceil(this.list().length/3),step=Math.min(74,Math.floor(374/rows));return{x:16+(i%3)*112,y:84+Math.floor(i/3)*step,w:104,h:step-6};},
@@ -602,18 +602,18 @@ const Select={enter(){Music.play('funk');this.sel=null;this.hover=null;this.tab=
   const focusN=(this.hover||this.sel||{}).name,wave={la:Math.floor(t*4)%2?'up':'diagUp',ra:'hip',legs:'stand'};
   drawPerson(6,2,2.7,KING,{robe:true,crown:true,pose:focusN==='Brook'?wave:lordK});drawPerson(294,2,2.7,QUEEN,{robe:true,crown:true,pose:focusN==='Tisha'?wave:lordQ});
   txtS('KING BROOK',22,44,4,C.gold);txtS('QUEEN TISHA',310,44,4,C.gold);
-  txtS('CHOOSE YOUR FIGHTER',166,16,8,C.gold);
+  txtS('CHOOSE YOUR WARRIOR',166,16,8,C.gold);
   const line=this.sel&&t-this.shout<1.6?[this.sel.name.toUpperCase()+'!',Math.floor(this.shout*7)%2?'King Brook':'Queen Tisha']:ROYAL_LINES[Math.floor(t/3)%ROYAL_LINES.length];
   txt('"'+line[0]+'"',166,32,17,C.white,'center',VT);txt('— '+line[1],166,44,13,C.pink2,'center',VT);
   for(const tb of this.tabs){const on=this.tab===tb.id;box(tb.x,tb.y,tb.w,tb.h,on?(tb.id==='care'?C.pink:C.blue):C.plum2,on?C.gold:C.ink);txt(tb.label,tb.x+tb.w/2,tb.y+11,6,on?C.ink:C.gray);}
   const L=this.list();L.forEach((c,i)=>{const r=this.cell(i),on=c===this.sel,sp=on?1.8:1;const hv=c===this.hover&&!on;box(r.x,r.y,r.w,r.h,on?C.plum3:hv?'#1c3a66':C.plum2,on?C.gold:hv?C.pink2:C.ink);ctx.save();ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();const sc=Math.min(3,(r.h-13)/18.5);drawPerson(r.x+52-6*sc,r.y+4,sc,c,{dance:t*sp+i*.37,seed:i+(c.team?4:0)});ctx.restore();txt(c.name.toUpperCase(),r.x+r.w/2,r.y+r.h-7,c.name.length>9?6:7,on?C.gold:C.white);if(c.royal)txt(c.name==='Brook'?'♛ KING':'♛ QUEEN',r.x+5,r.y+9,5,C.gold,'left');if(on)emo(c.team?'💸':'💗',r.x+90,r.y+12+Math.sin(t*4)*2,12);if(c.name==='Cali')txt('★CAPT',r.x+5,r.y+9,5,C.gold,'left');});
   if(this.tab==='team'&&!this.sel)wrapTxt('The billing crew takes a turn at wound care. Good luck, DreamTeam!',180,340,300,19,C.pink2,19,VT,'center');
-  if(this.sel){const pw=powerOf(this.sel);fitTxt('⚡ '+pw.name+' · '+pw.short,180,470,336,17,C.gold);}else fitTxt('Tap a fighter to see their superpower',180,470,336,17,C.gray);}
+  if(this.sel){const pw=powerOf(this.sel);fitTxt('⚡ '+pw.name+' · '+pw.short,180,470,336,17,C.gold);}else fitTxt('Tap a warrior to see their superpower',180,470,336,17,C.gray);}
 };
 
 const BEDS=[[24,212],[148,212],[272,212],[24,296],[148,296]];
 const Ward={clock:true,
- enter(){G.powerReady=true;G.coffeeActive=G.coffeePending;G.coffeePending=false;Music.play('lofi');this.acc=btn('✓ ACCEPT',20,488,156,38,()=>this.decide(true),{col:C.teal,tc:C.ink,size:9});this.ref=btn('↗ REFER OUT',184,488,156,38,()=>this.decide(false),{col:C.red,size:9});this.acc.hidden=this.ref.hidden=true;this.acc.focus=true;this.b=this.acc;this.buttons=[this.acc,this.ref];if(G.coffeeActive)fx('☕ COFFEE: CLOCK SLOWED',180,190,C.gold,7);if(G.roundShown!==G.pi){G.roundShown=G.pi;startCut({title:'ROUND '+(G.pi+1),sub:'Who walks in next?  FIGHT!',col:C.red,dur:1.2});}
+ enter(){G.powerReady=true;G.coffeeActive=G.coffeePending;G.coffeePending=false;Music.play('lofi');this.acc=btn('✓ ACCEPT',20,488,156,38,()=>this.decide(true),{col:C.teal,tc:C.ink,size:9});this.ref=btn('↗ REFER OUT',184,488,156,38,()=>this.decide(false),{col:C.red,size:9});this.acc.hidden=this.ref.hidden=true;this.acc.focus=true;this.b=this.acc;this.buttons=[this.acc,this.ref];if(G.coffeeActive)fx('☕ COFFEE: CLOCK SLOWED',180,190,C.gold,7);if(G.roundShown!==G.pi){G.roundShown=G.pi;startCut({title:'ROUND '+(G.pi+1),sub:"Who walks in next?  LET'S HEAL!",col:C.red,dur:1.2});}
   this.help=G.pi>0&&Math.random()<.75?{at:rand(.8,2),state:'wait',x:0}:null;
   this.billers=shuffle(crew()).slice(0,2);
   this.royal=G.pi===G.royalAt&&!G.royalDone?{who:G.char.name==='Brook'?'QUEEN TISHA':G.char.name==='Tisha'?'KING BROOK':Math.random()<.5?'KING BROOK':'QUEEN TISHA',state:'walk'}:null;},
@@ -835,7 +835,7 @@ function drawBossBody(B,yOff,t,trackX){const x=70,y=46+yOff,w=220,h=150,sx=x+14,
  rect(x+w/2-22,y+h+4,44,12,'#bfb69a');rect(x+28,y+h+16,w-56,10,'#bfb69a');rect(x+28,y+h+16,w-56,2,'#d8cfb4');}
 
 const BossIntro={
- enter(){G.bossTriggered=true;G.clock=1020;Music.stop();G.pile=G.patients.length-G.charts;checkpoint();SFX.alarm();G.shake=1.2;this.rum=false;this.f=btn('FIGHT!',90,476,180,48,()=>{go(Boss);startCut({title:'FINAL ROUND',sub:'FIGHT!',col:C.red,dur:1.3});},{col:C.red,size:12});this.f.hidden=true;this.f.focus=true;this.buttons=[this.f];},
+ enter(){G.bossTriggered=true;G.clock=1020;Music.stop();G.pile=G.patients.length-G.charts;checkpoint();SFX.alarm();G.shake=1.2;this.rum=false;this.f=btn('CHART!',90,476,180,48,()=>{go(Boss);startCut({title:'FINAL ROUND',sub:'CHART!',col:C.red,dur:1.3});},{col:C.red,size:12});this.f.hidden=true;this.f.focus=true;this.buttons=[this.f];},
  update(){if(this.t>1&&!this.rum){this.rum=true;SFX.boom();G.shake=1.6;}if(this.t>3.4)this.f.hidden=false;},
  draw(){const t=this.t;rect(0,0,W,H,'#071322');if(t<1.2&&Math.floor(t*8)%2){ctx.globalAlpha=.25;rect(0,0,W,H,C.red);ctx.globalAlpha=1;}
   txtS('5:00 PM',180,24,16,C.gold);if(t>1.4)txt('✓ CHECKPOINT SAVED  ·  +'+G.stars+'★ TO YOUR RANK',180,45,6,C.teal);rect(40,250,280,14,'#5a3b28');drawBossBody({hp:1,max:1,flash:0},lerp(420,10,(t-1)/2),t,180);rect(30,262,300,8,'#3d2718');
@@ -943,7 +943,7 @@ const Ceremony={
   const kx=t<2.2?40:t<3.8?lerp(40,92,(t-2.2)/.4):lerp(92,40,(t-3.8)/.4);
   const qx=t<3.8?270:t<5.6?lerp(270,214,(t-3.8)/.5):lerp(214,270,(t-5.6)/.4);
   const isB=G.char.name==='Brook',isT=G.char.name==='Tisha';if(!isB)drawPerson(kx,248,4,KING,{robe:true,crown:true});if(!isT)drawPerson(qx,248,4,QUEEN,{robe:true,crown:true});
-  partyBack(this,t);if(t<SURF_T)drawPerson(nx,ny,4,G.char,{kneel,walk:t<2?t:0,crown:t>=5.4,dance:t>6.2?t:undefined});if(t>6.2&&t<SURF_T)txtS(moveName(t),nx+24,ny-56,6,C.pink2);partyFront(this,t,nx,ny);
+  partyBack(this,t);if(t<SURF_T)drawPerson(nx,ny,4,G.char,{kneel,walk:t<2?t:0,crown:t>=5.4,dance:t>6.2?t:undefined});partyFront(this,t,nx,ny);
   if(!isB&&t>=2.4&&t<3.9){const hx=kx+44,hy=292,up={x:kx+64,y:206},L={x:nx+8,y:ny+32},R={x:nx+40,y:ny+32};let tip;
    if(t<2.8)tip={x:lerp(up.x,L.x,(t-2.4)/.4),y:lerp(up.y,L.y,(t-2.4)/.4)};else if(t<3.1)tip={x:lerp(L.x,up.x,(t-2.8)/.3),y:lerp(L.y,up.y,(t-2.8)/.3)};else if(t<3.4)tip={x:lerp(up.x,R.x,(t-3.1)/.3),y:lerp(up.y,R.y,(t-3.1)/.3)};else tip={x:lerp(R.x,up.x,(t-3.4)/.5),y:lerp(R.y,up.y,(t-3.4)/.5)};
    ctx.lineCap='round';ctx.strokeStyle=C.ink;ctx.lineWidth=6;line({x:hx,y:hy},tip);ctx.strokeStyle='#dfe7f2';ctx.lineWidth=3.5;line({x:hx,y:hy},tip);rect(hx-5,hy-2,10,4,C.gold);}
@@ -955,14 +955,14 @@ const Ceremony={
   if(t>6.2){txtS('SCORE '+G.score.toLocaleString()+'  ★'+G.stars+'/'+this.max+(this.newBest?'  NEW BEST!':''),180,354,7,C.gold);drawRank(180,372,150);this.badges.slice(0,3).forEach((b,i)=>txt('🏅 '+b,180,420+i*19,19,C.white,'center',VT));}}
 };
 
-const Lose={trophy:{x:298,y:2,w:30,h:22},enter(){Music.stop();SFX.sigh();const B=Boss.B||{hp:1,max:1};this.left=B.hp;this.pct=Math.round(100*(1-B.hp/B.max));showRankUp();this.buttons=[btn('RETRY BOSS',22,474,150,48,()=>{go(Boss);startCut({title:'ROUND 2',sub:'Rematch! FIGHT!',col:C.red,dur:1.2});},{col:C.red}),btn('NEW SHIFT',188,474,150,48,()=>go(Select),{col:C.blue})];this.buttons[0].focus=true;},
+const Lose={trophy:{x:298,y:2,w:30,h:22},enter(){Music.stop();SFX.sigh();const B=Boss.B||{hp:1,max:1};this.left=B.hp;this.pct=Math.round(100*(1-B.hp/B.max));showRankUp();this.buttons=[btn('RETRY BOSS',22,474,150,48,()=>{go(Boss);startCut({title:'ROUND 2',sub:'Rematch! CHART!',col:C.red,dur:1.2});},{col:C.red}),btn('NEW SHIFT',188,474,150,48,()=>go(Select),{col:C.blue})];this.buttons[0].focus=true;},
  draw(){const t=this.t;rect(0,0,W,H,'#08121f');txtS('OVERTIME!',180,40,22,C.red);drawBossBody({hp:1,max:1,flash:0},40+Math.sin(t*12)*3,t,180);txtS('HA HA HA',180+Math.sin(t*9)*6,300,10,C.gold);
   drawPerson(162,320,3,G.char);stressEmote(180,302,t);txtS(this.pct>=60?'SO CLOSE!':'NOT THIS TIME',180,392,10,this.pct>=60?C.gold:C.white);fitTxt('MEGA-CHART had only '+this.left+' HP left ('+this.pct+'% beaten)',180,414,330,19,C.white);wrapTxt('✓ Your shift is saved. Retry the boss from the checkpoint!',180,434,320,18,C.teal,18,VT,'center');}
 };
 
 /* ---------- where to look next (hints) ---------- */
 Title.hint=function(){return null;};
-Select.hint=function(){if(!this.sel){const r=this.cell(0);return{mode:'tap',x:r.x+52,y:r.y+34,text:'Tap a fighter'};}return{mode:'tap',x:180,y:506,text:'Ready? FIGHT!'};};
+Select.hint=function(){if(!this.sel){const r=this.cell(0);return{mode:'tap',x:r.x+52,y:r.y+34,text:'Tap a warrior'};}return{mode:'tap',x:180,y:506,text:"Ready? Let's heal!"};};
 Ward.hint=function(){return this.acc.hidden?null:{mode:'chip',x:180,y:290,text:'Read their story: wound care or not?'};};
 Decide.hint=function(){return this.done?null:{mode:'chip',x:180,y:420,text:'Tap the best answer'};};
 Assess.hint=function(){if(this.done||this.a)return null;const p=this.p;return this.phase==='L'?{mode:'drag',x:CX-p.L*13,y:CY,x2:CX+p.L*13,y2:CY,text:'Drag edge to edge'}:{mode:'drag',x:CX,y:CY-p.W*13,x2:CX,y2:CY+p.W*13,text:'Now top to bottom'};};
@@ -980,7 +980,7 @@ for(const s of[Ward,Assess,Cleanse,Debride,Dress,After,Chart])s.side='game';
 Boss.side='boss';Select.side='select';Title.side='party';Ceremony.side='party';
 let gT=0;
 function panel(x,y,w,h){box(x,y,w,h,C.plum2);rect(x,y,w,3,C.gold);}
-function sideNurse(cx,top,s,look,stressy){const by=top-2*s-26;drawPerson(cx-6*s,top,s,look,stressy?{}:{dance:gT,seed:5});if(!stressy)txt(moveName(gT,5),cx,top+18*s+60,6,C.gold);if(stressy)stressEmote(cx,by,gT);else loveEmote(cx,by,gT);}
+function sideNurse(cx,top,s,look,stressy){const by=top-2*s-26;drawPerson(cx-6*s,top,s,look,stressy?{}:{dance:gT,seed:5});if(stressy)stressEmote(cx,by,gT);else loveEmote(cx,by,gT);}
 function drawSides(){if(OX<=0&&OY<=0)return;rect(0,0,VW,VH,'#08121f');
  for(let i=0;i<60;i++){const x=(i*97+13)%VW,y=((i*151)+gT*(10+(i%4)*6))%(VH+20)-10;if(x>OX-12&&x<OX+W+12&&y>OY-12&&y<OY+H+12)continue;ctx.globalAlpha=(scene.side==='game'||scene.side==='boss')?.07:.16;if(i%3===0)emo('💗',x,y,10);else{rect(x,y-1,8,3,C.pink2);rect(x+2.5,y-3.5,3,8,C.pink2);}}ctx.globalAlpha=1;
  if(OX>0){rect(OX-5,OY,5,H,C.plum3);rect(OX+W,OY,5,H,C.plum3);}if(OY>0){rect(OX-5,OY-5,W+10,5,C.plum3);rect(OX-5,OY+H,W+10,5,C.plum3);}
@@ -998,14 +998,14 @@ function drawTop3(Rx,pw,tappable){const x=Rx-pw/2,y=404,h=118;panel(x,y,pw,h);tx
 function drawPanels(){TOP3R=null;
  const m=scene.side,Lx=OX/2,Rx=OX+W+OX/2,pw=Math.min(OX-28,236);if(OX<120||!m)return;
  const s=Math.max(3,Math.min(7,Math.floor((pw-24)/12)));
- if(m==='party'){for(let k=0;k<6;k++){const cx=k<3?Lx:Rx,y=110+(k%3)*140,c=ALL[(k*5+Math.floor(gT/4))%ALL.length],ss=Math.min(s,4);drawPerson(cx-6*ss,y,ss,c,{dance:gT+k*.3,seed:k*3});txt(moveName(gT+k*.3,k*3),cx,y+18*ss+28,5,C.gold);txt(c.name.toUpperCase(),cx,y+18*ss+14,6,C.pink2);}return;}
+ if(m==='party'){for(let k=0;k<6;k++){const cx=k<3?Lx:Rx,y=110+(k%3)*140,c=ALL[(k*5+Math.floor(gT/4))%ALL.length],ss=Math.min(s,4);drawPerson(cx-6*ss,y,ss,c,{dance:gT+k*.3,seed:k*3});txt(c.name.toUpperCase(),cx,y+18*ss+14,6,C.pink2);}return;}
  if(OX<160)return;
- if(m==='select'){panel(Lx-pw/2,60,pw,390);const c=Select.hover||Select.sel;txt(Select.hover&&Select.hover!==Select.sel?'PREVIEW':Select.sel?'READY TO FIGHT!':'CHOOSE YOUR FIGHTER!',Lx,82,7,C.gold);
-  if(!c){wrapTxt('Hover over a fighter to preview them here',Lx,190,pw-30,20,C.pink2,20,VT,'center');emo('👉',Lx,250+Math.sin(gT*4)*4,30);}else{sideNurse(Lx,150,s,c,false);txt(c.name.toUpperCase(),Lx,150+18*s+18,8,C.white);const po=powerOf(c);fitTxt('⚡ '+po.name,Lx,150+18*s+82,pw-20,18,C.gold);wrapTxt(po.d,Lx,150+18*s+100,pw-24,16,C.pink2,16,VT,'center');}
+ if(m==='select'){panel(Lx-pw/2,60,pw,390);const c=Select.hover||Select.sel;txt(Select.hover&&Select.hover!==Select.sel?'PREVIEW':Select.sel?'READY TO HEAL!':'CHOOSE YOUR WARRIOR!',Lx,82,7,C.gold);
+  if(!c){wrapTxt('Hover over a warrior to preview them here',Lx,190,pw-30,20,C.pink2,20,VT,'center');emo('👉',Lx,250+Math.sin(gT*4)*4,30);}else{sideNurse(Lx,150,s,c,false);txt(c.name.toUpperCase(),Lx,150+18*s+18,8,C.white);const po=powerOf(c);fitTxt('⚡ '+po.name,Lx,150+18*s+82,pw-20,18,C.gold);wrapTxt(po.d,Lx,150+18*s+100,pw-24,16,C.pink2,16,VT,'center');}
   panel(Rx-pw/2,60,pw,330);txt('HOW TO PLAY',Rx,82,7,C.gold);
   ['💗 Heal 3 patients: measure, cleanse, debride, dress','📄 Chart your notes (yes, really)','👾 Beat MEGA-CHART 3000 at 5 PM','👑 Get knighted by King Brook & Queen Tisha'].forEach((l,i)=>wrapTxt(l,Rx-pw/2+14,116+i*66,pw-28,19,C.white,18,VT,'left'));drawTop3(Rx,pw,true);return;}
  const stressy=scene===Chart||m==='boss';
- panel(Lx-pw/2,60,pw,350);txt('YOUR FIGHTER',Lx,82,7,C.gold);sideNurse(Lx,150,s,G.char,stressy);txt(G.char.name.toUpperCase(),Lx,150+18*s+18,8,C.white);txt(stressy?'Charting... again 😤':'Happy to heal 💗',Lx,150+18*s+42,20,stressy?C.pink2:C.teal,'center',VT);{const po=powerOf(G.char);txt('⚡ '+po.name,Lx,150+18*s+80,17,G.powerReady?C.gold:C.gray,'center',VT);txt(G.powerReady?'READY · tap your nurse':'used · recharges next patient',Lx,150+18*s+97,15,C.gray,'center',VT);}
+ panel(Lx-pw/2,60,pw,350);txt('YOUR WARRIOR',Lx,82,7,C.gold);sideNurse(Lx,150,s,G.char,stressy);txt(G.char.name.toUpperCase(),Lx,150+18*s+18,8,C.white);txt(stressy?'Charting... again 😤':'Happy to heal 💗',Lx,150+18*s+42,20,stressy?C.pink2:C.teal,'center',VT);{const po=powerOf(G.char);txt('⚡ '+po.name,Lx,150+18*s+80,17,G.powerReady?C.gold:C.gray,'center',VT);txt(G.powerReady?'READY · tap your nurse':'used · recharges next patient',Lx,150+18*s+97,15,C.gray,'center',VT);}
  panel(Rx-pw/2,60,pw,330);
  if(m==='boss'){const B=Boss.B;txt('INCOMING ATTACKS',Rx,82,7,C.gold);
   [['📨','Pop-Up Storm','Dodge the falling boxes',B.storm>0],['🔒','Password Expired','Tap the letters in order',!!B.pw],['🌀','Spinning Wheel','You freeze. Wait it out',B.spin>0],['✒️','Missing Signature','It chases you. Keep moving',!!B.sig]].forEach(([e,n,d,on],i)=>{const y=112+i*58;if(on)box(Rx-pw/2+8,y-14,pw-16,50,C.plum3,C.gold);emo(e,Rx-pw/2+24,y+6,18);txt(n,Rx-pw/2+42,y,19,on?C.gold:C.white,'left',VT);txt(d,Rx-pw/2+42,y+18,16,C.gray,'left',VT);});
