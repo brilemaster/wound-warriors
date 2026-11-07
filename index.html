@@ -77,7 +77,7 @@ function drawBtn(b){if(b.hidden)return;const oy=b===pressed?3:0,r=Math.min(14,b.
  const tc=b.disabled?C.gray:(b.tc===C.white&&lum(fill)>.62?C.ink:b.tc);txt(b.label,b.x+b.w/2,b.y+oy+b.h/2+(b.sub?-6:0),b.size,tc);if(b.sub)txt(b.sub,b.x+b.w/2,b.y+oy+b.h/2+9,16,tc,'center',VT);}
 
 /* ---------- audio ---------- */
-let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v25 · spotlight';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v26 · party';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 
 const SILENT=(()=>{const n=1600,buf=new Uint8Array(44+n),dv=new DataView(buf.buffer),w=(o,s)=>{for(let i=0;i<s.length;i++)buf[o+i]=s.charCodeAt(i);};w(0,'RIFF');dv.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,8000,true);dv.setUint32(28,8000,true);dv.setUint16(32,1,true);dv.setUint16(34,8,true);w(36,'data');dv.setUint32(40,n,true);buf.fill(128,44);let s='';for(const b of buf)s+=String.fromCharCode(b);return 'data:audio/wav;base64,'+btoa(s);})();
 function initAudio(){
@@ -895,12 +895,46 @@ const Boss={
    for(const tl of P.tiles){if(tl.used)continue;box(tl.x,tl.y,tl.w,tl.h,C.gold);txt(tl.ch,tl.x+tl.w/2,tl.y+tl.h/2+1,14,C.ink);}}}
 };
 
+
+/* ===== The after-party: the whole crew storms the throne room, sparklers, confetti, fireworks, and a crowd surf ===== */
+const PARTY_T=6.2,SURF_T=7.8;
+function makeParty(){const crew=ALL.filter(c=>!c.royal&&c!==G.char),n=crew.length,back=[],front=[];
+ shuffle(crew).forEach((c,i)=>(i%2?front:back).push(c));
+ const place=(arr,feet,s,row)=>arr.map((c,i)=>{const tx=18+(i+.5)*(324/arr.length)-6*s,fromL=tx<180-6*s;return{c,s,row,tx,feet,x:fromL?-40-i*14:400+i*14,role:i%3===0?'spark':i%3===1?'throw':'cheer',ph:Math.random()*6,throwT:rand(.3,1.4),delay:.05*i+(row?0:.15)};});
+ return{people:place(back,314,2.25,0).concat(place(front,330,2.5,1)),parts:[],fwT:.4,crackT:0,surfX:180};}
+function handPos(X,Y,s,ra){return[X+(8.95+4.15*Math.sin(ra))*s,Y+(7.5+4.15*Math.cos(ra))*s];}
+function partyUpdate(sc,dt){const P=sc.party,t=sc.t;if(!P||t<PARTY_T){return;}
+ const pt=t-PARTY_T;P.surfX=t<SURF_T?180:180+Math.sin((t-SURF_T)*1.05)*118;
+ for(const m of P.people){const go=pt-m.delay;if(go>0){m.x+=clamp(m.tx-m.x,-260*dt,260*dt);}
+  if(Math.abs(m.x-m.tx)<1){if(m.role==='spark'){const ra=ARM_A[Math.sin(t*6+m.ph)>0?'up':'diagUp'],[hx,hy]=handPos(m.x,m.feet-18*m.s-hopOf(m,t),m.s,ra);
+     for(let k=0;k<3;k++){const a=rand(0,6.283),v=rand(30,90);P.parts.push({k:'spark',x:hx,y:hy-10,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.15,.35),c:pick(['#fff6c2','#ffe066','#ffffff','#ffb347'])});}}
+   else if(m.role==='throw'){m.throwT-=dt;if(m.throwT<=0){m.throwT=rand(1.1,1.9);m.thrown=t;const[hx,hy]=handPos(m.x,m.feet-18*m.s,m.s,ARM_A.up);for(let k=0;k<14;k++)P.parts.push({k:'conf',x:hx,y:hy,vx:rand(-70,70),vy:rand(-230,-120),life:rand(1.6,2.4),c:pick(CONF.concat(['#ff5fd2'])),r:rand(0,6),vr:rand(-9,9)});tone(rand(1800,2400),.03,'triangle',.08);}}}}
+ P.fwT-=dt;if(P.fwT<=0){P.fwT=rand(.45,.9);const x=rand(40,320),y=rand(105,190),col=pick(['#8fc15a','#4cb5b0','#3a97d8','#ffcc33','#ff5fd2','#b388ff']),n=34;
+  for(let k=0;k<n;k++){const a=k/n*6.283,v=rand(85,135);P.parts.push({k:'fw',x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.7,1.1),max:1,c:col});}tone(rand(90,140),.18,'sine',.25);P.crackT=.25;}
+ if(P.crackT>0){P.crackT-=dt;if(Math.random()<.5)tone(rand(2500,4200),.02,'square',.05);}
+ if(Math.abs(t-SURF_T)<dt&&!P.lifted){P.lifted=1;SFX.fanfare();G.shake=.3;}
+ for(const q of P.parts){q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;if(q.k==='conf'){q.vy+=260*dt;q.vx*=.985;q.r+=q.vr*dt;}else if(q.k==='fw'){q.vy+=60*dt;q.vx*=.97;q.vy*=.97;}else q.vy+=120*dt;}
+ P.parts=P.parts.filter(q=>q.life>0&&q.y<560);if(P.parts.length>600)P.parts.splice(0,P.parts.length-600);}
+function hopOf(m,t){return m.role==='cheer'?Math.abs(Math.sin(t*5+m.ph))*5:Math.abs(Math.sin(t*3+m.ph))*2;}
+function partyBack(sc,t){const P=sc.party;if(!P||t<PARTY_T)return;for(const q of P.parts)if(q.k==='fw'){ctx.globalAlpha=clamp(q.life,0,1);ctx.fillStyle=q.c;ctx.beginPath();ctx.arc(q.x,q.y,2.4,0,7);ctx.fill();ctx.globalAlpha=clamp(q.life,0,1)*.5;ctx.strokeStyle=q.c;ctx.lineWidth=1.6;line({x:q.x,y:q.y},{x:q.x-q.vx*.08,y:q.y-q.vy*.08});}ctx.globalAlpha=1;}
+function partyFront(sc,t,nx,ny){const P=sc.party;if(!P||t<PARTY_T)return;const sx=P.surfX;
+ const drawRow=row=>{for(const m of P.people){if(m.row!==row)continue;const moving=Math.abs(m.x-m.tx)>1,y=m.feet-18*m.s-(moving?0:hopOf(m,t)),under=t>=SURF_T&&Math.abs(m.x+6*m.s-sx)<46;
+  let pose;if(moving)pose=null;else if(under)pose={la:'up',ra:'up',legs:'stand'};else if(m.role==='spark')pose={la:Math.sin(t*3+m.ph)>0?'out':'hip',ra:Math.sin(t*6+m.ph)>0?'up':'diagUp',legs:'stand'};else if(m.role==='throw')pose=m.thrown&&t-m.thrown<.4?{la:'up',ra:'up',legs:'tuck'}:{la:'diagUp',ra:'hip',legs:'stand'};
+  drawPerson(m.x,y,m.s,m.c,moving?{walk:t*1.4}:pose?{pose,face:'happy'}:{dance:t*1.6+m.ph,seed:Math.floor(m.ph*3),face:'happy'});
+  if(!moving&&m.role==='spark'&&!under){const ra=ARM_A[Math.sin(t*6+m.ph)>0?'up':'diagUp'],[hx,hy]=handPos(m.x,y,m.s,ra);ctx.strokeStyle='#8a8f99';ctx.lineWidth=1.4;line({x:hx,y:hy},{x:hx+Math.sin(ra)*2,y:hy-11});ctx.fillStyle='#fff8d0';ctx.beginPath();ctx.arc(hx+Math.sin(ra)*2,hy-11,2.2+Math.random()*1.2,0,7);ctx.fill();}}};
+ drawRow(0);
+ // the winner rides the crowd
+ if(t>=SURF_T){const k=clamp((t-SURF_T)/.45,0,1),bx=lerp(nx+24,sx,k),by=lerp(ny+30,292,k)+Math.sin(t*7)*2.5;ctx.save();ctx.translate(bx,by);ctx.rotate(Math.sin(t*2.2)*.12);ctx.translate(-32,0);ctx.rotate(-Math.PI/2);drawPerson(0,0,3.6,G.char,{crown:true,face:'happy',pose:{la:'up',ra:'up',legs:Math.floor(t*4)%2?'kickL':'kickR'}});ctx.restore();
+  txtS('CROWD SURF!',clamp(sx,60,300),222+Math.sin(t*4)*2,8,C.gold);}
+ drawRow(1);
+ for(const q of P.parts){if(q.k==='spark'){ctx.globalAlpha=clamp(q.life*4,0,1);ctx.strokeStyle=q.c;ctx.lineWidth=1.2;line({x:q.x,y:q.y},{x:q.x-q.vx*.03,y:q.y-q.vy*.03});}
+  else if(q.k==='conf'){ctx.globalAlpha=clamp(q.life,0,1);ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.r);ctx.fillStyle=q.c;ctx.fillRect(-2,-1.2,4,2.4);ctx.restore();}}ctx.globalAlpha=1;}
 const Ceremony={
  enter(){Music.play('throne');this.flags={};this.again=btn('PLAY AGAIN',16,488,160,44,()=>go(Select),{col:C.pink});this.lb=btn('LEADERBOARD',184,488,160,44,()=>go(Board,Select),{col:C.gold,tc:C.ink,size:7});this.again.hidden=true;this.lb.hidden=true;this.again.focus=true;this.buttons=[this.again,this.lb];
   const avg=G.happy.length?G.happy.reduce((a,b)=>a+b,0)/G.happy.length:0;this.badges=[];if(avg>=70)this.badges.push('Healer of the Day');if(G.charts>=G.patients.length)this.badges.push('No Chart Left Behind');if(G.perfect>=G.patients.length)this.badges.push('Steady Hands');if(G.bestCombo>=3)this.badges.push('Combo x'+G.bestCombo);this.badges.push('Survived Epic Friday');
-  this.title=G.char.name==='Brook'?'LONG LIVE KING BROOK':G.char.name==='Tisha'?'LONG LIVE QUEEN TISHA':(G.char.g==='M'?'SIR ':'DAME ')+G.char.name.toUpperCase();this.max=G.patients.reduce((a,q)=>a+q.stepKeys.length*3,0);const best=Number(store.get('ww-best',0))||0;this.newBest=G.score>best;if(this.newBest)store.set('ww-best',G.score);submitScore({warrior:G.char.name,g:G.char.g,score:G.score,stars:G.stars,starsMax:this.max,at:Date.now()});},
+  this.party=makeParty();this.title=G.char.name==='Brook'?'LONG LIVE KING BROOK':G.char.name==='Tisha'?'LONG LIVE QUEEN TISHA':(G.char.g==='M'?'SIR ':'DAME ')+G.char.name.toUpperCase();this.max=G.patients.reduce((a,q)=>a+q.stepKeys.length*3,0);const best=Number(store.get('ww-best',0))||0;this.newBest=G.score>best;if(this.newBest)store.set('ww-best',G.score);submitScore({warrior:G.char.name,g:G.char.g,score:G.score,stars:G.stars,starsMax:this.max,at:Date.now()});},
  once(k,t,f){if(this.t>t&&!this.flags[k]){this.flags[k]=1;f();}},
- update(){this.once('s1',2.8,()=>SFX.sword());this.once('s2',3.4,()=>SFX.sword());this.once('cr',5.4,()=>SFX.coin());this.once('fan',5.8,()=>{SFX.fanfare();confetti(90);});this.once('hh',6.6,()=>Music.play('victory'));this.once('best',6.7,()=>{if(this.newBest)startCut({title:'NEW BEST!',sub:'Personal best: '+G.score.toLocaleString(),chars:[G.char],col:C.pink,pose:{la:'up',ra:'diagUp',legs:'kickL'}});showRankUp();});if(this.t>6&&Math.random()<.25)confetti(2);if(this.t>7){this.again.hidden=false;this.lb.hidden=false;}},
+ update(dt){partyUpdate(this,dt||.016);this.once('s1',2.8,()=>SFX.sword());this.once('s2',3.4,()=>SFX.sword());this.once('cr',5.4,()=>SFX.coin());this.once('fan',5.8,()=>{SFX.fanfare();confetti(90);});this.once('hh',6.6,()=>Music.play('victory'));this.once('best',6.7,()=>{if(this.newBest)startCut({title:'NEW BEST!',sub:'Personal best: '+G.score.toLocaleString(),chars:[G.char],col:C.pink,pose:{la:'up',ra:'diagUp',legs:'kickL'}});showRankUp();});if(this.t>6&&Math.random()<.25)confetti(2);if(this.t>7){this.again.hidden=false;this.lb.hidden=false;}},
  draw(){const t=this.t;rect(0,0,W,H,'#152257');rect(0,94,W,226,'#23307a');for(let y=94;y<320;y+=16)for(let x=(y/16)%2?0:16;x<W;x+=32)rect(x,y,1,16,'#1d2a6a');for(let y=110;y<320;y+=16)rect(0,y,W,1,'#1d2a6a');
   for(const bx of[124,220]){rect(bx,94,16,60,C.red);rect(bx,94,16,4,C.gold);ctx.fillStyle=C.red;ctx.beginPath();ctx.moveTo(bx,154);ctx.lineTo(bx+8,146);ctx.lineTo(bx+16,154);ctx.fill();drawCrown(bx+2,112,2);}
   for(const tx of[22,274]){box(tx,212,64,108,'#c99a2e');rect(tx+8,222,48,60,'#8e1b3a');rect(tx-4,284,72,10,C.gold);}
@@ -909,7 +943,7 @@ const Ceremony={
   const kx=t<2.2?40:t<3.8?lerp(40,92,(t-2.2)/.4):lerp(92,40,(t-3.8)/.4);
   const qx=t<3.8?270:t<5.6?lerp(270,214,(t-3.8)/.5):lerp(214,270,(t-5.6)/.4);
   const isB=G.char.name==='Brook',isT=G.char.name==='Tisha';if(!isB)drawPerson(kx,248,4,KING,{robe:true,crown:true});if(!isT)drawPerson(qx,248,4,QUEEN,{robe:true,crown:true});
-  drawPerson(nx,ny,4,G.char,{kneel,walk:t<2?t:0,crown:t>=5.4,dance:t>6.2?t:undefined});if(t>6.2)txtS(moveName(t),nx+24,ny-56,6,C.pink2);
+  partyBack(this,t);if(t<SURF_T)drawPerson(nx,ny,4,G.char,{kneel,walk:t<2?t:0,crown:t>=5.4,dance:t>6.2?t:undefined});if(t>6.2&&t<SURF_T)txtS(moveName(t),nx+24,ny-56,6,C.pink2);partyFront(this,t,nx,ny);
   if(!isB&&t>=2.4&&t<3.9){const hx=kx+44,hy=292,up={x:kx+64,y:206},L={x:nx+8,y:ny+32},R={x:nx+40,y:ny+32};let tip;
    if(t<2.8)tip={x:lerp(up.x,L.x,(t-2.4)/.4),y:lerp(up.y,L.y,(t-2.4)/.4)};else if(t<3.1)tip={x:lerp(L.x,up.x,(t-2.8)/.3),y:lerp(L.y,up.y,(t-2.8)/.3)};else if(t<3.4)tip={x:lerp(up.x,R.x,(t-3.1)/.3),y:lerp(up.y,R.y,(t-3.1)/.3)};else tip={x:lerp(R.x,up.x,(t-3.4)/.5),y:lerp(R.y,up.y,(t-3.4)/.5)};
    ctx.lineCap='round';ctx.strokeStyle=C.ink;ctx.lineWidth=6;line({x:hx,y:hy},tip);ctx.strokeStyle='#dfe7f2';ctx.lineWidth=3.5;line({x:hx,y:hy},tip);rect(hx-5,hy-2,10,4,C.gold);}
@@ -917,7 +951,7 @@ const Ceremony={
   if(G.char.royal&&t>=5.2&&t<5.6)sparkle(nx+24,ny+10,30,20);
   if(!isB)txtS('KING BROOK',kx+24,340,6,C.gold);if(!isT)txtS('QUEEN TISHA',qx+24,340,6,C.gold);
   if(t<5.8){txtS('THE ROYAL KNIGHTING',180,36,10,C.gold);txt('of '+G.char.name,180,62,24,C.pink2,'center',VT);}
-  else{const s=Math.min(1,(t-5.8)*4);ctx.save();ctx.translate(180,48);ctx.scale(s,s);box(-164,-34,328,70,C.gold);txt(this.title,0,-10,this.title.length>12?11:14,C.ink);txt('CHAMPION OF WOUND CARE',0,18,8,C.indigo);ctx.restore();loveEmote(nx+24,ny-30,t);}
+  else{const s=Math.min(1,(t-5.8)*4);ctx.save();ctx.translate(180,48);ctx.scale(s,s);box(-164,-34,328,70,C.gold);txt(this.title,0,-10,this.title.length>12?11:14,C.ink);txt('CHAMPION OF WOUND CARE',0,18,8,C.indigo);ctx.restore();if(t<SURF_T)loveEmote(nx+24,ny-30,t);}
   if(t>6.2){txtS('SCORE '+G.score.toLocaleString()+'  ★'+G.stars+'/'+this.max+(this.newBest?'  NEW BEST!':''),180,354,7,C.gold);drawRank(180,372,150);this.badges.slice(0,3).forEach((b,i)=>txt('🏅 '+b,180,420+i*19,19,C.white,'center',VT));}}
 };
 
