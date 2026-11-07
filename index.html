@@ -77,7 +77,7 @@ function drawBtn(b){if(b.hidden)return;const oy=b===pressed?3:0,r=Math.min(14,b.
  const tc=b.disabled?C.gray:(b.tc===C.white&&lum(fill)>.62?C.ink:b.tc);txt(b.label,b.x+b.w/2,b.y+oy+b.h/2+(b.sub?-6:0),b.size,tc);if(b.sub)txt(b.sub,b.x+b.w/2,b.y+oy+b.h/2+9,16,tc,'center',VT);}
 
 /* ---------- audio ---------- */
-let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v20 · funk';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v22 · patients';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 
 const SILENT=(()=>{const n=1600,buf=new Uint8Array(44+n),dv=new DataView(buf.buffer),w=(o,s)=>{for(let i=0;i<s.length;i++)buf[o+i]=s.charCodeAt(i);};w(0,'RIFF');dv.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,8000,true);dv.setUint32(28,8000,true);dv.setUint16(32,1,true);dv.setUint16(34,8,true);w(36,'data');dv.setUint32(40,n,true);buf.fill(128,44);let s='';for(const b of buf)s+=String.fromCharCode(b);return 'data:audio/wav;base64,'+btoa(s);})();
 function initAudio(){
@@ -222,27 +222,86 @@ const ALL=CHARS.concat(DREAM);
 const dreamBy=n=>DREAM.find(d=>d.name===n);
 const crew=()=>DREAM.filter(d=>!G||d!==G.char);
 
-const PATIENTS=[
- {name:'Mr. Delgado',loc:'Left heel',kind:'Pressure injury',drain:'Light',note:'Light drainage, shallow wound',dressing:'hydrocolloid',L:3.2,W:2.4,slough:3},
- {name:'Ms. Okafor',loc:'Right shin',kind:'Venous leg ulcer',drain:'Heavy',note:'Heavy drainage, soaking through',dressing:'alginate',L:4.6,W:2.8,slough:4},
- {name:'Mr. Petrakis',loc:'Sacrum',kind:'Pressure injury',drain:'Moderate',note:'Moderate drainage, needs cushioning',dressing:'foam',L:4.0,W:3.4,slough:5},
- {name:'Mrs. Lindqvist',loc:'Left forearm',kind:'Surgical wound',drain:'None',note:'Dry wound bed, needs moisture',dressing:'hydrogel',L:3.8,W:2.4,slough:5},
- {name:'Mr. Abernathy',loc:'Right ankle',kind:'Diabetic foot ulcer',drain:'Moderate',note:'Moderate drainage, bony spot to pad',dressing:'foam',L:3.4,W:2.8,slough:6}
+/* ===== Patient deck: 31 wound care cases + 7 "not wound care" cases to refer out =====
+ steps: A=measure, C=cleanse, D=debride/remove debris, R=dress, Q=clinical decision.  deb: what gets removed. look: wound appearance. */
+const SC=(t,loc,story,drain,dr,L,W,steps,q,o={})=>Object.assign({t,loc,story,drain,dr,L,W,steps,q},o);
+const SCENARIOS=[
+ SC('Diabetic foot ulcer','Right foot',"My foot sore won't heal... I didn't even feel it start.",'Moderate','foam',3.4,2.8,'ACDRQ',['What else does this foot need?','An offloading boot to take pressure off','Tight new dress shoes','Walk it off more often'],{deb:'slough',n:4}),
+ SC('Dog bite','Left forearm',"My neighbor's dog got me when I reached over the fence!",'Light','contact',2.6,1.8,'ACRQ',['Dog bite. Before they leave, make sure to...','Check rabies and tetanus status','Glue it shut tight','Skip the follow-up'],{look:'bite',cl:'Irrigate the bite well. Rub back and forth to flush it out!'}),
+ SC('Road rash','Left thigh',"I wiped out on my scooter when a car cut me off!",'Moderate','foam',4.4,3.0,'CDRQ',['Road rash with gravel. Also check...','Tetanus shot status','Their car insurance','Their shoe size'],{deb:'gravel',n:6,look:'scrape'}),
+ SC('Venous leg ulcer','Right shin',"My legs swell every day and this sore keeps leaking.",'Heavy','alginate',4.6,2.8,'ACDRQ',['Best long-term help for a venous ulcer?','Compression therapy','Keep legs hanging down','Ice packs all day'],{deb:'slough',n:3}),
+ SC('Pressure injury','Sacrum',"I've been stuck in bed for weeks after hip surgery.",'Moderate','foam',4.0,3.4,'ADRQ',['How do we prevent new pressure injuries?','Reposition every 2 hours','One extra pillow, forever','More time lying flat'],{deb:'slough',n:5}),
+ SC('Skin tear','Left forearm',"I bumped my arm on the car door and the skin peeled back.",'Light','contact',3.0,1.8,'CRQ',['Skin tears are fragile. Best tip?','Gently lay the flap back in place','Strong tape right on the skin','Leave it open to dry out']),
+ SC('Kitchen burn','Right hand',"I grabbed the hot pan handle without a mitt!",'Light','hydrogel',2.8,2.0,'QAR',['Fresh burn! First thing to do?','Cool running water','Rub butter on it','Hold ice right on it'],{look:'burn'}),
+ SC('Opened incision','Abdomen',"My incision popped open a little when I coughed.",'Moderate','alginate',3.6,1.8,'ACRQ',['Who needs to know about this?','The surgeon','Nobody, it is normal','Their dentist'],{look:'cut'}),
+ SC('Infected cat scratch','Right hand',"My cat scratched me three days ago. Now it's red and puffy.",'Light','silver',2.6,1.6,'ACRQ',['Watch closely for...','Redness spreading or a fever','Extra whisker growth','Purring'],{look:'scrape'}),
+ SC('Bee sting','Left arm',"A bee got me at the picnic and the stinger's still in!",'None','gauze',1.8,1.6,'DRQ',['After the stinger is out...','A cold compress for swelling','Squeeze it hard','Put honey on it'],{deb:'stinger',n:1,look:'puncture'}),
+ SC('Thorn puncture','Left finger',"I was pruning roses and a thorn broke off in my finger.",'Light','hydrocolloid',1.8,1.6,'DCRQ',['Puncture wound! Double check...','Tetanus status','The thorn color','The rose variety'],{deb:'thorn',n:1,look:'puncture'}),
+ SC('Frostbite','Right toes',"I went ice fishing and my toes went numb and white.",'None','contact',3.0,2.2,'QAR',['How do we rewarm frostbite?','Warm (not hot) water soak','Rub it with snow','Heating pad on high'],{look:'frost'}),
+ SC('Arterial ulcer','Left toe',"My toe has a dry black spot and my feet are always cold.",'None','gauze',2.2,1.8,'AQR',['Dry, stable black scab and poor circulation. Best move?','Keep it dry and check circulation first','Scrape it all off right now','Soak it for an hour'],{look:'eschar'}),
+ SC('Exhaust pipe burn','Right calf',"My leg touched the motorcycle exhaust pipe. Ouch!",'Moderate','silver',3.8,2.6,'ACRQ',['Help this burn heal by...','Keeping the leg elevated','Popping every blister','Getting a tan on it'],{look:'burn'}),
+ SC('Shoe blister','Right heel',"I broke in new work shoes on a 12-hour shift...",'Light','hydrocolloid',2.4,2.0,'CRQ',['Intact blister. Best advice?','Leave it intact and protect it','Pop it with a pin','Keep wearing those shoes'],{look:'burn'}),
+ SC('Trail run fall','Left knee',"I tripped on a tree root during my trail run.",'Moderate','foam',3.6,3.0,'CDRQ',['After cleaning the gravel out...','Check tetanus status','Finish the trail run','Rub dirt in it'],{deb:'gravel',n:5,look:'scrape'}),
+ SC('Infected spider bite','Right thigh',"Something bit me in the garage. Now it's swollen and draining.",'Moderate','silver',2.8,2.4,'ACDRQ',['Infected-looking bite. Also...','Outline the redness to track it','Pop it like a pimple','Wait two weeks to look again'],{deb:'slough',n:2,look:'bite'}),
+ SC('Sunburn blisters','Shoulders',"I fell asleep at the beach. I'm a lobster.",'Light','hydrogel',4.2,3.2,'CRQ',['Sunburn care tip?','Cool it and drink extra water','Bake in the sun some more','Scrub the blisters'],{look:'burn'}),
+ SC('Infected ingrown toenail','Big toe',"My big toe is red and angry around the nail.",'Light','silver',2.0,1.6,'ACRQ',['Who can fix the nail itself?','Podiatry','A hair stylist','A plumber']),
+ SC('Charting paper cut','Right finger',"I got a paper cut from all this charting!!",'None','hydrocolloid',2.0,1.0,'CRQ',['Treatment plan for this tragedy?','A bandage and a pep talk','Emergency surgery','Two weeks off work'],{look:'cut'}),
+ SC('Goat bite','Left hand',"A goat at the petting zoo nibbled WAY too hard!",'Light','contact',2.4,1.8,'ACRQ',['Animal bite. Always...','Check tetanus status','Bite the goat back','Ignore it'],{look:'bite',cl:'Irrigate the bite. Rub back and forth to flush it clean!'}),
+ SC('Fish hook','Left thumb',"I hooked my own thumb instead of a fish!",'Light','hydrocolloid',1.8,1.6,'DCRQ',['Dirty hook puncture. Check...','Tetanus status','The fish species','The bait type'],{deb:'hook',n:1,look:'puncture'}),
+ SC('Heel pressure injury','Left heel',"Grandpa's heel got sore from lying in bed.",'Moderate','foam',3.2,2.8,'ADRQ',['Protect the heels by...','Floating them off the bed','Tucking the feet in tight','Ignoring it'],{deb:'slough',n:3}),
+ SC('Lawn mower rock','Right shin',"A rock flew out of the lawn mower and smacked my shin.",'Moderate','foam',3.2,2.4,'ACDR',null,{deb:'gravel',n:3,look:'scrape'}),
+ SC('Chemical splash','Right forearm',"Pool chemicals splashed on my arm!",'Light','hydrogel',3.4,2.4,'QCR',['Chemical splash! First step?','Flush with lots of water','Wipe with a dry towel','Cover it up fast'],{look:'burn'}),
+ SC('Leash burn','Right palm',"My dog chased a squirrel and the leash ripped through my hand.",'Light','hydrogel',3.0,1.8,'CRQ',['Help it heal by...','Keeping it moist and covered','Letting it dry out and crack','Licking it'],{look:'scrape'}),
+ SC('Infected diabetic ulcer','Left foot',"My foot wound smells bad and drains more than before.",'Heavy','silver',3.8,3.0,'ACDRQ',['Diabetic and infected. Also check...','Blood sugar control','Shoe color','Toenail polish'],{deb:'slough',n:4}),
+ SC('Venous ulcer','Left ankle',"My ankle sore itches and the skin around it is dark.",'Moderate','foam',3.6,2.6,'ACRQ',['After dressing it, add...','A compression wrap','A heating pad','A tight sock band'],{}),
+ SC('Knee replacement incision','Right knee',"Just checking my new knee incision!",'None','contact',4.4,1.2,'ACRQ',['Looks good! Teach them to watch for...','Redness, warmth, or drainage','New freckles','Hair growth'],{look:'cut'}),
+ SC('Skate park fall','Left elbow',"I tried a trick at the skate park. The ground won.",'Moderate','foam',3.0,2.6,'CDRQ',['Gravel is out. One more check...','Tetanus status','Their skateboard brand','Their trick name'],{deb:'gravel',n:4,look:'scrape'}),
+ SC('Curling iron burn','Neck',"My curling iron slipped. Hair looks great though.",'Light','hydrogel',2.2,1.4,'CRQ',['Small burn. Keep it...','Clean and moist','Covered in toothpaste','Open to dirt'],{look:'burn'}),
+ // Not wound care: the right call is REFER OUT
+ SC('Chest pain','Chest',"My chest feels tight and I'm sweating a lot...",'None','gauze',2,2,'',null,{refer:'the ER'}),
+ SC('Snake bite','Right ankle',"A snake bit my ankle on the hiking trail!",'None','gauze',2,2,'',null,{refer:'the ER'}),
+ SC('Throat swelling','Throat',"I got stung and now my throat feels tight!",'None','gauze',2,2,'',null,{refer:'the ER'}),
+ SC('Fever and red streaks','Left leg',"I have a fever and red streaks are running up my leg.",'None','gauze',2,2,'',null,{refer:'the ER'}),
+ SC('Toothache','Mouth',"My tooth is KILLING me!",'None','gauze',2,2,'',null,{refer:'a dentist'}),
+ SC('Bent arm','Left arm',"I fell off a ladder and my arm looks... bent.",'None','gauze',2,2,'',null,{refer:'the ER for X-rays'}),
+ SC('Heavy bleeding','Right hand',"This cut won't stop bleeding, even with pressure!",'None','gauze',2,2,'',null,{refer:'the ER'})
 ];
-const DRESSINGS=[{id:'foam',l1:'FOAM',l2:'',name:'Foam'},{id:'alginate',l1:'ALGINATE',l2:'',name:'Alginate'},{id:'hydrocolloid',l1:'HYDRO-',l2:'COLLOID',name:'Hydrocolloid'},{id:'hydrogel',l1:'HYDRO-',l2:'GEL',name:'Hydrogel'}];
+const PATIENTS=SCENARIOS;
+const LASTNAMES=['Delgado','Okafor','Petrakis','Lindqvist','Abernathy','Nguyen','Kowalski','Brennan','Castillo','Haddad','Moreau','Tanaka','Whitfield','Oyelaran','Fitzgerald','Bianchi','Sandoval','Lindgren','Mbeki','Romero','Kaplan','Duarte','Ivanova','McAllister','Ferreira','Novak','Ashworth','Quintero','Halvorsen','Pemberton'];
+const DRAIN_NOTE={None:'Dry wound bed',Light:'Light drainage',Moderate:'Moderate drainage',Heavy:'Heavy drainage, soaking through'};
+const DEB_TXT={slough:"Pluck the yellow & gray slough. Don't touch the healthy pink tissue!",gravel:"Pick out every bit of gravel. Don't poke the tender tissue!",stinger:'Pluck out the stinger. Steady hands!',thorn:'Remove the broken thorn. Gently!',hook:'Ease the fish hook out. Careful!'};
+const DEB_COL={slough:['#e8cf6a','#b9b3a3'],gravel:['#5f6368','#7a7f86','#4a4f55'],stinger:['#1d1d1d'],thorn:['#6b3e1f'],hook:['#9aa3ad']};
+const DRESSINGS=[{id:'foam',l1:'FOAM',l2:'',name:'Foam'},{id:'alginate',l1:'ALGINATE',l2:'',name:'Alginate'},{id:'hydrocolloid',l1:'HYDRO-',l2:'COLLOID',name:'Hydrocolloid'},{id:'hydrogel',l1:'HYDRO-',l2:'GEL',name:'Hydrogel'},{id:'silver',l1:'SILVER',l2:'(ANTIMICROB)',name:'Silver'},{id:'contact',l1:'CONTACT',l2:'LAYER',name:'Contact layer'},{id:'gauze',l1:'DRY',l2:'GAUZE',name:'Dry gauze'}];
 const dName=id=>DRESSINGS.find(d=>d.id===id).name;
 const ITEMS=['coworker','coffee','snack'];
 const ITEM_INFO={coffee:{e:'☕',n:'COFFEE',d:'Slows the clock for your next patient'},coworker:{e:'🧑‍⚕️',n:'HELPFUL COWORKER',d:'Auto-fills one chart field'},snack:{e:'🍫',n:'SNACK DRAWER',d:'Tap it while charting to clear stress'}};
 
 function pointInPoly(x,y,pts){let ins=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const[xi,yi]=pts[i],[xj,yj]=pts[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)ins=!ins;}return ins;}
 function makeWound(p){const rx=p.L*PXCM/2,ry=p.W*PXCM/2,s1=rand(0,6),s2=rand(0,6),pts=[];for(let i=0;i<30;i++){const a=i/30*Math.PI*2,k=1+.07*Math.sin(3*a+s1)+.05*Math.sin(5*a+s2);pts.push([CX+Math.cos(a)*rx*k,CY+Math.sin(a)*ry*k]);}
- const bumps=[];for(let i=0;i<28;i++){const a=rand(0,6.283),f=Math.sqrt(Math.random())*.8;bumps.push([CX+Math.cos(a)*rx*f,CY+Math.sin(a)*ry*f]);}return{rx,ry,pts,bumps};}
-function makePatient(p){const fr=[];for(let i=0;i<46;i++)fr.push([rand(26,334),rand(134,414)]);return Object.assign({},p,{style:pick(['short','bob','buzz','curlyS','sidepart']),skin:pick(SKINS),hair:pick(['#d9d9d9','#bdbdbd','#8f8f8f','#f2f2f2','#5a3a22']),blanket:pick(['#7b6cf6','#3ddbb4','#f4a261','#4cc9f0','#ff8fab']),happy:60,mistakes:0,perfect:false,charted:false,stars:[0,0,0,0],react:null,wound:makeWound(p),freckles:fr});}
+ const bumps=[];for(let i=0;i<28;i++){const a=rand(0,6.283),f=Math.sqrt(Math.random())*.8;bumps.push([CX+Math.cos(a)*rx*f,CY+Math.sin(a)*ry*f]);}
+ const lk=p.look||'ulcer',marks=[],inside=f=>{const a=rand(0,6.283),r=Math.sqrt(Math.random())*f;return[CX+Math.cos(a)*rx*r,CY+Math.sin(a)*ry*r];};
+ if(lk==='burn')for(let i=0;i<4;i++){const[mx,my]=inside(.85);marks.push([mx,my,rand(4,8)]);}
+ else if(lk==='scrape')for(let i=0;i<12;i++){const[mx,my]=inside(.9);marks.push([mx,my,rand(8,20)]);}
+ else if(lk==='bite')for(let i=0;i<4;i++){marks.push([CX-rx*.55+i*rx*.37,CY-ry*.62,3]);marks.push([CX-rx*.45+i*rx*.32,CY+ry*.62,3]);}
+ else if(lk==='frost')for(let i=0;i<22;i++){const[mx,my]=inside(1.1);marks.push([mx,my,rand(1,2.5)]);}
+ else if(lk==='eschar')for(let i=0;i<5;i++){const[mx,my]=inside(.6);marks.push([mx,my,rand(6,12),rand(0,3)]);}
+ return{rx,ry,pts,bumps,lk,marks};}
+const ICON_RULES=[[/dog|leash/i,'🐕'],[/cat/i,'🐈'],[/goat/i,'🐐'],[/bee|sting/i,'🐝'],[/snake/i,'🐍'],[/spider/i,'🕷️'],[/fish/i,'🎣'],[/thorn|ros/i,'🌹'],[/scooter|car/i,'🛴'],[/skate/i,'🛹'],[/trail|root/i,'🌲'],[/mower/i,'🌱'],[/frost|ice/i,'❄️'],[/sun|beach/i,'☀️'],[/pan|burn|exhaust|curling|iron/i,'🔥'],[/chemical|pool/i,'🧪'],[/paper|chart/i,'📄'],[/shoe|blister/i,'👟'],[/diabet/i,'🦶'],[/chest/i,'💓'],[/tooth/i,'🦷'],[/ladder|bent/i,'🪜'],[/bleed/i,'🩸'],[/fever|streak/i,'🤒'],[/surg|incision|knee/i,'🩺'],[/toenail/i,'🦶'],[/pressure|bed|heel/i,'🛏️'],[/venous|leg|ankle/i,'🦵']];
+const STEP_SCENE=()=>({A:Assess,C:Cleanse,D:Debride,R:Dress,Q:Decide});
+function makePatient(sc){const fr=[];for(let i=0;i<46;i++)fr.push([rand(26,334),rand(134,414)]);const txt_=sc.t+' '+sc.story;const ico=(ICON_RULES.find(([re])=>re.test(txt_))||[0,'🩹'])[1];
+ const steps=(sc.steps||'').split('').filter(Boolean);
+ return Object.assign({},sc,{name:pick(['Mr.','Ms.','Mrs.'])+' '+pick(LASTNAMES),kind:sc.t,note:DRAIN_NOTE[sc.drain]||'',dressing:sc.dr,slough:sc.n||0,ico,stepKeys:steps,si:0,
+  style:pick(['short','bob','buzz','curlyS','sidepart','long']),skin:pick(SKINS),hair:pick(['#d9d9d9','#bdbdbd','#8f8f8f','#f2f2f2','#5a3a22','#2b1b14','#a8804a']),scrub:'#a9d6f5',
+  blanket:pick(['#7b6cf6','#3ddbb4','#f4a261','#4cc9f0','#ff8fab']),happy:60,mistakes:0,perfect:false,charted:false,stars:steps.map(()=>0),react:null,wound:makeWound(sc),freckles:fr});}
+function nextPatientFromDeck(){if(!G.deck.length)G.deck=shuffle(SCENARIOS);return makePatient(G.deck.pop());}
+function nextStep(){const p=cur();p.si++;const map=STEP_SCENE();if(p.si<p.stepKeys.length)go(map[p.stepKeys[p.si]]);else go(After);}
+function startCare(){const p=cur();p.si=0;go(STEP_SCENE()[p.stepKeys[0]]);}
 
 /* ---------- state ---------- */
 let G;
 function newGame(c){const others=shuffle(CHARS.filter(x=>x!==c&&!x.royal));G={powerReady:false,freezeT:0,zenT:0,boostT:0,expertT:0,shieldN:0,powerFlash:0,char:c,score:0,combo:0,bestCombo:0,stress:0,clock:480,pi:0,charts:0,pile:0,perfect:0,treated:0,happy:[],coworker:0,snacks:0,coffeePending:false,coffeeActive:false,bossTriggered:false,freeze:0,shake:0,fx:[],parts:[],starPop:null,stars:0,
- shown:0,idle:0,cutQ:[],patients:shuffle(PATIENTS).slice(0,3).map(makePatient),npcs:others.slice(0,3),npcPt:makePatient(PATIENTS[0]),royalAt:ri(1,2),royalDone:false};}
+ shown:0,idle:0,cutQ:[],deck:shuffle(SCENARIOS),patients:[],npcs:others.slice(0,3),npcPt:makePatient(SCENARIOS[0]),goodCalls:0,roundShown:-1,royalAt:ri(1,2),royalDone:false};dealPatients();}
+function dealPatients(){G.patients=[0,1,2].map(()=>nextPatientFromDeck());}
 newGame(null);
 const N=()=>G.patients.length;
 /* Persistent progress: stars earned across every shift build a fighter rank (kept on this device). */
@@ -256,7 +315,7 @@ function showRankUp(){if(G.rankUp&&!G.rankUpShown){G.rankUpShown=true;startCut({
 const cur=()=>G.patients[Math.min(G.pi,G.patients.length-1)];
 const STEP_NAMES=['MEASURE','CLEANSE','DEBRIDE','DRESS'];
 function react(kind){cur().react={kind,t:gT};}
-function award(step,n){const p=cur();p.stars[step]=n;G.stars+=n;addScore(n*50);G.starPop={n,label:STEP_NAMES[step],t:0};for(let i=0;i<n;i++)tone(880+i*220,.14,'square',.28,.1+i*.15);}
+function award(step,n){const p=cur();p.stars[p.si]=n;G.stars+=n;addScore(n*50);G.starPop={n,label:scene.label||'GREAT',t:0};for(let i=0;i<n;i++)tone(880+i*220,.14,'square',.28,.1+i*.15);}
 function addScore(n){G.score+=G.boostT>0?n*2:n;}
 const POWER_KINDS={shortcut:{short:'does half your step',d:'Instantly does half the work of the step you are on.',b:'Boss: fires a 12-chart volley.'},
  freeze:{short:'freezes the clock',d:'Freezes the clock and everything moving for 10 sec.',b:'Boss: wipes pop-ups and stops the clock.'},
@@ -377,6 +436,7 @@ function drawPerson(X,Y,s,L,o={}){
  if(robe){ctx.fillStyle=C.gold;for(const y of[8.6,10,11.4]){ctx.beginPath();ctx.arc(6,y,.32,0,7);ctx.fill();}ctx.strokeStyle=C.gold;ctx.lineWidth=.35;ctx.beginPath();ctx.moveTo(4,6.9);ctx.quadraticCurveTo(6,8.4,8,6.9);ctx.stroke();}
  else if(L.team){ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(4.5,6.8);ctx.lineTo(6,8.3);ctx.lineTo(5.3,6.8);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(7.5,6.8);ctx.lineTo(6,8.3);ctx.lineTo(6.7,6.8);ctx.closePath();ctx.fill();
   ctx.strokeStyle=shade(top,-.35);ctx.lineWidth=.22;ctx.beginPath();ctx.moveTo(6,8.3);ctx.lineTo(6,12.2);ctx.stroke();ctx.fillStyle='#fff';rr(7.1,9.4,1.3,1.6,.2);ctx.fill();ctx.fillStyle=C.blue;rr(7.1,9.4,1.3,.45,.15);ctx.fill();}
+ else if(L.gown){ctx.fillStyle=skin;ctx.beginPath();ctx.moveTo(5,6.8);ctx.lineTo(7,6.8);ctx.lineTo(6,8.3);ctx.closePath();ctx.fill();ctx.fillStyle=shade(top,-.2);for(const[dx,dy]of[[4,9.5],[7.5,9],[5.5,11],[8,11.3],[3.5,11.4]]){ctx.beginPath();ctx.arc(dx,dy,.32,0,7);ctx.fill();}}
  else{ctx.fillStyle=skin;ctx.beginPath();ctx.moveTo(5,6.8);ctx.lineTo(7,6.8);ctx.lineTo(6,8.3);ctx.closePath();ctx.fill();ctx.strokeStyle=shade(top,-.3);ctx.lineWidth=.22;rr(3.4,9.6,1.8,1.4,.2);ctx.stroke();ctx.fillStyle='#fff';rr(7,9.3,1.4,1.7,.2);ctx.fill();ctx.fillStyle=C.pink;rr(7,9.3,1.4,.45,.15);ctx.fill();}
  drawHead(L,o.face||'smile');hairFront(L);
  if(L.hat&&!crown){rr(3,-.7,6,2.7,1.1);fo('#16285e');rr(2.3,1.6,7.4,.85,.4);fo('#0d1a40');ctx.fillStyle=C.gold;ctx.beginPath();ctx.arc(6,.55,.55,0,7);ctx.fill();}
@@ -389,19 +449,37 @@ function bubble(x,y,e){rect(x-19,y-14,38,28,C.ink);rect(x-17,y-12,34,24,'#fff');
 function loveEmote(x,y,t){bubble(x,y,'💗');for(let i=0;i<3;i++){const ph=(t*.7+i/3)%1;ctx.globalAlpha=1-ph;emo('💗',x+14+Math.sin(ph*6+i)*6,y-14-ph*28,10);}ctx.globalAlpha=1;}
 function stressEmote(x,y,t){const b=Math.sin(t*14)*1.5;bubble(x+b,y,Math.floor(t*1.5)%2?'😤':'😩');for(let i=0;i<2;i++){const ph=(t*1.5+i/2)%1;ctx.globalAlpha=1-ph;emo('💦',x+(i?22:-22),y-8+ph*18,11);}ctx.globalAlpha=1;}
 function drawBed(x,y,pt,state,t){
- rect(x-2,y-2,68,38,C.ink);rect(x,y,64,34,'#ffffff');rect(x,y+26,64,8,'#b9c3d6');rect(x+2,y+34,3,6,C.ink);rect(x+59,y+34,3,6,C.ink);
- rect(x+2,y+4,15,13,'#e8eef8');drawMiniHead(x+3.5,y+3.5,1.9,pt,state==='done'&&pt.happy>=60?'happy':'calm');
- if(state==='done'&&pt.happy>=60){rect(x+7,y+12,5,1,C.ink);rect(x+6,y+11,1,1,C.ink);rect(x+12,y+11,1,1,C.ink);}else rect(x+8,y+12,3,1,C.ink);
- rect(x+17,y+4,45,22,pt.blanket);rect(x+17,y+4,45,3,shade(pt.blanket,.3));
+ // frame, mattress, headboard
+ rr(x-2,y-2,68,40,6);ctx.fillStyle=C.ink;ctx.fill();rr(x,y,64,36,5);ctx.fillStyle='#ffffff';ctx.fill();rect(x,y+28,64,8,'#b9c3d6');rect(x+3,y+36,3,6,C.ink);rect(x+58,y+36,3,6,C.ink);rr(x-3,y-6,6,40,2);ctx.fillStyle='#8aa0c2';ctx.fill();
+ rr(x+2,y+5,16,22,5);ctx.fillStyle='#e8eef8';ctx.fill();
+ // the patient: a whole minifig lying down, head on the pillow
+ const face=state==='done'?(pt.happy>=60?'happy':'calm'):state==='current'?'ouch':state==='npc'?'smile':'calm';
+ ctx.save();ctx.translate(x+3,y+31);ctx.rotate(-Math.PI/2);drawPerson(0,0,2.45,Object.assign({},pt,{gown:true,scrub:pt.scrub||'#a9d6f5'}),{face});ctx.restore();
+ // blanket over the body, folded at the top
+ rr(x+33,y+3,30,25,4);ctx.fillStyle=pt.blanket;ctx.fill();rr(x+33,y+3,5,25,3);ctx.fillStyle=shade(pt.blanket,.35);ctx.fill();
+ ctx.globalAlpha=.25;for(let k=0;k<2;k++)rect(x+44+k*9,y+5,2,21,'#ffffff');ctx.globalAlpha=1;
+ if(pt.ico&&state!=='npc'){rr(x+44,y+7,18,18,9);ctx.fillStyle='rgba(255,255,255,.9)';ctx.fill();emo(pt.ico,x+53,y+16,12);}
  if(state==='done')emo('💗',x+32,y-10+Math.sin(t*3)*2,13);
  if(state==='current')txtS('!',x+32,y-12+Math.sin(t*6)*3,12,C.gold);
 }
+
 function drawPatch(p){
  rect(17,125,326,298,C.ink);rect(20,128,320,292,p.skin);ctx.fillStyle=shade(p.skin,-.07);for(const f of p.freckles)ctx.fillRect(f[0],f[1],2,2);
  rect(20,410,320,10,shade(p.skin,-.1));{const g=ctx.createRadialGradient(CX,CY,60,CX,CY,230);g.addColorStop(0,'rgba(20,10,30,0)');g.addColorStop(1,'rgba(20,10,30,.32)');ctx.fillStyle=g;ctx.fillRect(20,128,320,292);}rect(286,402,26,3,C.ink);txt('1 cm',299,394,15,C.ink,'center',VT);
 }
 function polyPath(pts,sc=1){ctx.beginPath();pts.forEach(([x,y],i)=>{const X=CX+(x-CX)*sc,Y=CY+(y-CY)*sc;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.closePath();}
-function drawWound(p){const w=p.wound;polyPath(w.pts,1.25);ctx.fillStyle=shade(p.skin,-.14);ctx.fill();polyPath(w.pts,1.08);ctx.fillStyle='#a83a4f';ctx.fill();polyPath(w.pts,1);ctx.fillStyle='#e05a6d';ctx.fill();for(const b of w.bumps)rect(b[0],b[1],3,3,'#f2879a');}
+const WOUND_COL={ulcer:['#a83a4f','#e05a6d','#f2879a'],burn:['#d9604f','#ff8f78','#ffc4b4'],scrape:['#c0454c','#ee6d70','#ffb0a8'],bite:['#a83a4f','#e05a6d','#f2879a'],puncture:['#8f2f40','#d24f62','#f2879a'],cut:['#a83a4f','#e05a6d','#f2879a'],eschar:['#4a3328','#2a1d18','#5a4034'],frost:['#6a4c96','#a988d0','#e6dcf5']};
+function drawWound(p){const w=p.wound,lk=w.lk||'ulcer',c=WOUND_COL[lk]||WOUND_COL.ulcer;
+ polyPath(w.pts,1.25);ctx.fillStyle=lk==='burn'||lk==='scrape'?'rgba(230,90,80,.28)':lk==='frost'?'rgba(150,170,230,.35)':shade(p.skin,-.14);ctx.fill();
+ polyPath(w.pts,1.08);ctx.fillStyle=c[0];ctx.fill();polyPath(w.pts,1);ctx.fillStyle=c[1];ctx.fill();
+ if(lk!=='eschar'&&lk!=='cut')for(const b of w.bumps)rect(b[0],b[1],3,3,c[2]);
+ if(lk==='burn')for(const[mx,my,r]of w.marks){ctx.beginPath();ctx.arc(mx,my,r,0,7);ctx.fillStyle='rgba(255,247,230,.75)';ctx.fill();ctx.strokeStyle='rgba(180,80,60,.6)';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='rgba(255,255,255,.9)';ctx.beginPath();ctx.arc(mx-r*.35,my-r*.35,r*.25,0,7);ctx.fill();}
+ else if(lk==='scrape'){ctx.strokeStyle='rgba(150,30,40,.55)';ctx.lineWidth=1.5;ctx.lineCap='round';for(const[mx,my,l]of w.marks)line({x:mx-l/2,y:my-l*.12},{x:mx+l/2,y:my+l*.12});}
+ else if(lk==='bite')for(const[mx,my,r]of w.marks){ctx.beginPath();ctx.arc(mx,my,r,0,7);ctx.fillStyle='#5a1420';ctx.fill();}
+ else if(lk==='puncture'){ctx.beginPath();ctx.arc(CX,CY,3.5,0,7);ctx.fillStyle='#4a0f1a';ctx.fill();}
+ else if(lk==='cut'){ctx.strokeStyle='#5a1420';ctx.lineWidth=2.5;line({x:CX-w.rx*.9,y:CY},{x:CX+w.rx*.9,y:CY});if(/incision/i.test(p.t||'')){ctx.strokeStyle='#1d1626';ctx.lineWidth=1.6;for(let k=-3;k<=3;k++){const sx=CX+k*w.rx*.26;line({x:sx-3,y:CY-w.ry-3},{x:sx+3,y:CY+w.ry+3});line({x:sx+3,y:CY-w.ry-3},{x:sx-3,y:CY+w.ry+3});}}}
+ else if(lk==='frost')for(const[mx,my,r]of w.marks){ctx.beginPath();ctx.arc(mx,my,r,0,7);ctx.fillStyle='rgba(255,255,255,.85)';ctx.fill();}
+ else if(lk==='eschar'){ctx.strokeStyle='#120b08';ctx.lineWidth=1.4;for(const[mx,my,l,a]of w.marks)line({x:mx,y:my},{x:mx+Math.cos(a)*l,y:my+Math.sin(a)*l});}}
 function drawRuler(a,b,locked){const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,nx=-uy,ny=ux;ctx.lineCap='butt';
  ctx.strokeStyle=C.ink;ctx.lineWidth=9;line(a,b);ctx.strokeStyle=locked?C.teal:'#ffd23f';ctx.lineWidth=6;line(a,b);
  ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;for(let s=0,k=0;s<=d;s+=PXCM/2,k++){const L=k%2===0?7:4;ctx.beginPath();ctx.moveTo(a.x+ux*s,a.y+uy*s);ctx.lineTo(a.x+ux*s+nx*L,a.y+uy*s+ny*L);ctx.stroke();}
@@ -418,8 +496,9 @@ function drawHUD(){rect(0,0,W,40,'#071322');rect(0,40,W,2,C.ink);
  if(scene&&scene.care)meter(232,24,120,11,cur().happy/100,C.pink,'HAPPY');
  else txt('📄 '+(G.treated-G.charts)+' unsigned',352,30,16,C.pink2,'right',VT);
 }
+function drawTrophy(r){rr(r.x,r.y,r.w,r.h,7);ctx.fillStyle=C.gold;ctx.fill();rr(r.x,r.y,r.w,r.h*.45,6);ctx.fillStyle='rgba(255,255,255,.3)';ctx.fill();emo('🏆',r.x+r.w/2,r.y+r.h/2+1,13);}
 function drawMute(){rect(336,6,5,8,C.white);ctx.fillStyle=C.white;ctx.beginPath();ctx.moveTo(341,6);ctx.lineTo(347,2);ctx.lineTo(347,18);ctx.lineTo(341,14);ctx.closePath();ctx.fill();if(muted){ctx.strokeStyle=C.red;ctx.lineWidth=2;line({x:333,y:3},{x:354,y:17});}else{rect(350,7,2,6,C.white);}}
-function careFrame(n,title,instr){rect(0,0,W,H,C.plum);drawHUD();rect(0,42,W,20,C.plum2);txt('STEP '+n+'/4 · '+title,180,53,8,C.gold);const p=cur();txt(p.name+'  ·  '+p.loc,180,76,20,C.pink2,'center',VT);wrapTxt(instr,180,97,336,19,C.white,17,VT,'center');drawPatch(p);drawFace(p);drawPerson(14,476,3,G.char);loveEmote(32,456,scene.t);powerTag(8,430,52,106,34,425);
+function careFrame(n,title,instr){rect(0,0,W,H,C.plum);drawHUD();rect(0,42,W,20,C.plum2);{const q=cur();txt('STEP '+(q.si+1)+'/'+q.stepKeys.length+' · '+title,180,53,8,C.gold);}const p=cur();txt(p.name+'  ·  '+p.loc,180,76,20,C.pink2,'center',VT);wrapTxt(instr,180,97,336,19,C.white,17,VT,'center');drawPatch(p);drawFace(p);drawPerson(14,476,3,G.char);loveEmote(32,456,scene.t);powerTag(8,430,52,106,34,425);
  txt('★'+p.stars.reduce((a,b)=>a+b,0),346,53,8,C.gold,'right');}
 const REACT_E={ouch:'😣',relief:'😌',happy:'😄',huh:'🤨'};
 function drawFace(p){const r=p.react,k=r&&gT-r.t<1.5?r.kind:'calm';box(26,360,48,48,'#ffffff');ctx.save();ctx.beginPath();ctx.rect(26,360,48,48);ctx.clip();drawMiniHead(31,364,5.6,p,k);ctx.restore();
@@ -482,7 +561,7 @@ const Title={enter(){this.buttons=[btn('START',90,404,180,52,()=>{initAudio();Mu
 
 const ROYAL_LINES=[['CHOOSE YOUR FIGHTER!','King Brook'],['Choose wisely...','Queen Tisha'],['The EHR awaits.','King Brook'],['Who dares face MEGA-CHART?','Queen Tisha']];
 const Select={enter(){Music.play('funk');this.sel=null;this.hover=null;this.tab='care';this.start=btn('FIGHT!',40,486,280,40,()=>{if(!this.sel)return;newGame(this.sel);go(Ward);},{col:C.red,size:12});this.start.disabled=true;this.start.focus=true;
-  this.tabs=[{id:'care',label:'WOUND WARRIORS',x:16,y:58,w:160,h:20},{id:'team',label:'INTEGU DREAMTEAM',x:184,y:58,w:160,h:20}];this.buttons=[this.start];this.shout=0;},
+  this.tabs=[{id:'care',label:'WOUND WARRIORS',x:16,y:58,w:144,h:20},{id:'team',label:'INTEGU DREAMTEAM',x:166,y:58,w:144,h:20}];this.trophy={x:316,y:57,w:30,h:22};this.buttons=[this.start];this.shout=0;},
  list(){return this.tab==='care'?CHARS:DREAM;},
  cell(i){const rows=Math.ceil(this.list().length/3),step=Math.min(74,Math.floor(374/rows));return{x:16+(i%3)*112,y:84+Math.floor(i/3)*step,w:104,h:step-6};},
  move(q){const L=this.list();this.hover=null;for(let i=0;i<L.length;i++)if(hit(this.cell(i),q)){this.hover=L[i];break;}},
@@ -507,13 +586,17 @@ const Select={enter(){Music.play('funk');this.sel=null;this.hover=null;this.tab=
 
 const BEDS=[[24,212],[148,212],[272,212],[24,296],[148,296]];
 const Ward={clock:true,
- enter(){G.powerReady=true;G.coffeeActive=G.coffeePending;G.coffeePending=false;Music.play('lofi');this.b=btn('BEGIN CARE',226,414,118,34,()=>go(Assess),{col:C.teal,tc:C.ink,size:7});this.b.hidden=true;this.b.focus=true;this.buttons=[this.b];if(G.coffeeActive)fx('☕ COFFEE: CLOCK SLOWED',180,190,C.gold,7);startCut({title:'ROUND '+(G.pi+1),sub:cur().name+'  ·  FIGHT!',col:C.red,dur:1.2});
+ enter(){G.powerReady=true;G.coffeeActive=G.coffeePending;G.coffeePending=false;Music.play('lofi');this.acc=btn('✓ ACCEPT',20,488,156,38,()=>this.decide(true),{col:C.teal,tc:C.ink,size:9});this.ref=btn('↗ REFER OUT',184,488,156,38,()=>this.decide(false),{col:C.red,size:9});this.acc.hidden=this.ref.hidden=true;this.acc.focus=true;this.b=this.acc;this.buttons=[this.acc,this.ref];if(G.coffeeActive)fx('☕ COFFEE: CLOCK SLOWED',180,190,C.gold,7);if(G.roundShown!==G.pi){G.roundShown=G.pi;startCut({title:'ROUND '+(G.pi+1),sub:'Who walks in next?  FIGHT!',col:C.red,dur:1.2});}
   this.help=G.pi>0&&Math.random()<.75?{at:rand(.8,2),state:'wait',x:0}:null;
   this.billers=shuffle(crew()).slice(0,2);
   this.royal=G.pi===G.royalAt&&!G.royalDone?{who:G.char.name==='Brook'?'QUEEN TISHA':G.char.name==='Tisha'?'KING BROOK':Math.random()<.5?'KING BROOK':'QUEEN TISHA',state:'walk'}:null;},
  helperX(){const t=this.t,h=this.help;if(h&&h.state!=='wait'&&h.state!=='gone')return h.x;const ph=(t*.1+.3)%2;return 60+(ph<1?ph:2-ph)*230;},
  royalX(){return -40+(this.t-.6)*58;},
- update(){if(this.t>1.3)this.b.hidden=false;const h=this.help;
+ decide(acc){const p=cur();if(!p.refer&&acc){startCare();return;}
+  if(p.refer&&!acc){G.goodCalls++;addScore(300);SFX.coin();startCut({title:'GOOD CALL!',sub:'Sent to '+p.refer+'. Not a wound care case.',col:C.teal,chars:[G.char],pose:{la:'up',ra:'out',legs:'stand'}});}
+  else{G.score=Math.max(0,G.score-150);G.shown=G.score;SFX.bad();startCut(p.refer?{title:'WRONG CALL!',sub:'That needs '+p.refer+'. We sent them over.',col:C.red,chars:[G.char],face:'stress',pose:{la:'head',ra:'head',legs:'bend'}}:{title:'OOPS!',sub:'That was a wound care patient. They needed you!',col:C.red,chars:[G.char],face:'stress',pose:{la:'head',ra:'head',legs:'bend'}});}
+  G.clock+=15;G.patients[G.pi]=nextPatientFromDeck();go(Ward);},
+ update(){if(this.t>1.3){this.acc.hidden=this.ref.hidden=false;}const h=this.help;
   if(h){if(h.state==='wait'&&this.t>=h.at){h.x=this.helperX();h.state='ask';h.t0=this.t;}else if(h.state==='ask'&&this.t-h.t0>7)h.state='gone';else if(h.state==='thanks'&&this.t-h.t0>2.2)h.state='gone';}
   if(this.royal&&this.royal.state==='walk'&&this.royalX()>400)this.royal.state='gone';},
  down(q){const h=this.help;if(h&&h.state==='ask'){const x=h.x;if(q.x>x-14&&q.x<x+38&&q.y>140&&q.y<200){h.state='thanks';h.t0=this.t;G.coworker++;addScore(100);SFX.coin();fx('TEAMWORK! +1 COWORKER',180,214,C.gold,7);return;}}
@@ -547,11 +630,15 @@ const Ward={clock:true,
   const r=this.royal;if(r&&r.state==='walk'&&t>.6){const x=this.royalX();drawPerson(x,362,2,r.who==='KING BROOK'?KING:QUEEN,{robe:true,crown:true});txtS(r.who,clamp(x+12,40,320),352,5,C.gold);
    if(Math.floor(t*3)%2)txtS('👑 ROYAL VISIT! TAP FOR A BONUS!',180,184,6,C.gold);}
   drawHUD();
-  box(8,406,344,126,C.plum2);txt('PATIENT '+(G.pi+1)+' OF '+N(),20,424,7,C.gold,'left');fitTxt(p.name,20,452,196,26,C.white,'left');fitTxt(p.loc+'  ·  '+p.kind,20,476,326,20,C.pink2,'left');fitTxt('💧 '+p.note,20,498,326,19,C.white,'left');
-  fitTxt('⚡ Tap your fighter during care for '+powerOf(G.char).name+'!',20,520,326,16,C.gold,'left');}
+  box(8,406,344,126,C.plum2);txt('PATIENT '+(G.pi+1)+' OF '+N(),20,422,7,C.gold,'left');txt('GOOD CALLS: '+G.goodCalls,340,422,6,C.teal,'right');fitTxt(p.name,20,446,320,24,C.white,'left');fitTxt(p.loc+'  ·  '+p.kind+(p.refer?'':'  ·  '+p.stepKeys.length+' steps'),20,468,326,19,C.pink2,'left');
+  if(this.acc.hidden)fitTxt('Your next patient is arriving...',180,506,326,18,C.gray);
+  else{// the patient's story, in a big speech bubble
+   const bx=16,by=292,bw=328,bh=98;rr(bx-2,by-2,bw+4,bh+4,16);ctx.fillStyle=C.ink;ctx.fill();rr(bx,by,bw,bh,14);ctx.fillStyle='#ffffff';ctx.fill();
+   ctx.save();ctx.beginPath();rr(bx+8,by+10,52,52,10);ctx.clip();ctx.fillStyle='#eaf4fb';ctx.fillRect(bx+8,by+10,52,52);drawMiniHead(bx+12,by+14,6.2,p,p.refer?'stress':'ouch');ctx.restore();emo(p.ico,bx+52,by+60,18);
+   wrapTxt('"'+p.story+'"',bx+70,by+24,bw-82,21,C.ink,19,VT,'left');txt('Wound care can help? Accept or refer out.',bx+bw/2,by+bh-12,13,'#5b6f8c','center',VT);}}
 };
 
-const Assess={clock:true,care:true,
+const Assess={clock:true,care:true,label:'MEASURE',
  enter(){this.p=cur();this.phase='L';this.a=null;this.b=null;this.done=0;this.res=[];this.miss=0;this.errs=0;},
  power(){const p=this.p;if(this.phase==='L'){this.a={x:CX-p.L*13,y:CY};this.b={x:CX+p.L*13,y:CY};}else{this.a={x:CX,y:CY-p.W*13};this.b={x:CX,y:CY+p.W*13};}this.up();},
  down(q){if(this.done||q.y<128||q.y>420)return;this.a={x:q.x,y:q.y};this.b={x:q.x,y:q.y};},
@@ -560,27 +647,27 @@ const Assess={clock:true,care:true,
   if(err<=.2){const perfect=err<.07;SFX.good();addScore(Math.round(150*(1-err))+(perfect?100:0));this.p.happy+=perfect?7:4;fx(perfect?'PERFECT MEASURE!':'✓ '+m.toFixed(1)+' CM',180,(a.y+b.y)/2-30,perfect?C.gold:C.teal);this.res.push({a,b});this.errs+=err;
    if(this.phase==='L'){this.phase='W';react('calm');}else{this.done=Math.max(this.t,.001);react('happy');award(0,this.miss===0&&this.errs<.2?3:this.miss<=1?2:1);}}
   else{SFX.bad();this.p.happy-=3;this.p.mistakes++;this.miss++;react('huh');fx((m<target?'TOO SHORT':'TOO LONG')+' · TRY AGAIN',180,150,C.red,7);}},
- update(){if(this.done&&this.t-this.done>1.1)go(Cleanse);},
+ update(){if(this.done&&this.t-this.done>1.1)nextStep();},
  draw(){careFrame(1,'ASSESS',this.done?'Measured! Moving on...':this.phase==='L'?'Drag a ruler across the wound LENGTH (the longest side).':'Now drag across the WIDTH (the shortest side).');drawWound(this.p);for(const r of this.res)drawRuler(r.a,r.b,true);if(this.a)drawRuler(this.a,this.b,false);if(G.expertT>0&&!this.done){const p=this.p,a=this.phase==='L'?{x:CX-p.L*13,y:CY}:{x:CX,y:CY-p.W*13},b=this.phase==='L'?{x:CX+p.L*13,y:CY}:{x:CX,y:CY+p.W*13};ctx.setLineDash([5,4]);ctx.strokeStyle=C.teal;ctx.lineWidth=3;line(a,b);ctx.setLineDash([]);}
   txt('L: '+(this.res[0]?this.p.L.toFixed(1)+' cm':'—'),80,500,22,this.res[0]?C.teal:C.gray,'left',VT);txt('W: '+(this.res[1]?this.p.W.toFixed(1)+' cm':'—'),210,500,22,this.res[1]?C.teal:C.gray,'left',VT);}
 };
 
 const GRIME=['#8a6a3a','#a88b4a','#6f5a3a','#b9a06a','#7d7262'];
-const Cleanse={clock:true,care:true,
+const Cleanse={clock:true,care:true,label:'CLEANSE',
  enter(){const p=this.p=cur(),w=p.wound;this.g=[];for(let i=0;i<150;i++){const a=rand(0,6.283),f=Math.sqrt(Math.random());this.g.push({x:CX+Math.cos(a)*w.rx*1.45*f,y:CY+Math.sin(a)*w.ry*1.55*f,r:ri(2,4),c:pick(GRIME)});}this.total=150;this.left=150;this.done=0;this.sT=0;},
  down(q){if(!this.done)this.rub(q);},move(q){if(ptr.down&&!this.done)this.rub(q);},
  power(){for(const g of this.g)if(!g.gone&&Math.random()<.6){g.gone=true;this.left--;}sparkle(CX,CY,this.p.wound.rx,this.p.wound.ry);if(this.left<=this.total*.08)this.finish();},
  rub(q){let n=0;for(const g of this.g)if(!g.gone&&Math.hypot(g.x-q.x,g.y-q.y)<(G.expertT>0?34:20)){g.gone=true;n++;}if(n){this.left-=n;if(this.t-this.sT>.07){SFX.scrub();this.sT=this.t;}if(this.left<=this.total*.08)this.finish();}},
  finish(){this.done=Math.max(this.t,.001);this.g.forEach(g=>g.gone=true);this.left=0;SFX.good();const bonus=Math.max(0,Math.round(200-this.t*12));addScore(100+bonus);this.p.happy+=6;fx(bonus>100?'SPARKLING!':'CLEAN!',180,200,C.teal,10);const w=this.p.wound;sparkle(CX,CY,w.rx,w.ry);react('relief');award(1,this.t<6?3:this.t<10?2:1);},
- update(){if(this.done&&this.t-this.done>1.1)go(Debride);},
- draw(){careFrame(2,'CLEANSE','Scrub away the debris! Rub back and forth over the wound.');drawWound(this.p);for(const g of this.g)if(!g.gone)rect(g.x-g.r/2,g.y-g.r/2,g.r,g.r,g.c);
+ update(){if(this.done&&this.t-this.done>1.1)nextStep();},
+ draw(){careFrame(2,this.p.cl?'IRRIGATE':'CLEANSE',this.p.cl||'Scrub away the debris! Rub back and forth over the wound.');drawWound(this.p);for(const g of this.g)if(!g.gone)rect(g.x-g.r/2,g.y-g.r/2,g.r,g.r,g.c);
   if(ptr.down&&!this.done&&ptr.y>128&&ptr.y<420)drawGauze(ptr.x,ptr.y);const pct=Math.min(1,(1-this.left/this.total)/.92);meter(80,490,264,16,pct,C.teal,'CLEAN '+Math.round(pct*100)+'%');}
 };
 
-const Debride={clock:true,care:true,
+const Debride={clock:true,care:true,get label(){return cur().deb==='slough'?'DEBRIDE':'REMOVE';},
  enter(){const p=this.p=cur(),w=p.wound,idx=G.pi;this.blobs=[];for(let i=0;i<p.slough;i++){let bx=CX,by=CY,ok=false;for(let k=0;k<300&&!ok;k++){const a=rand(0,6.283),f=rand(.05,.68);bx=CX+Math.cos(a)*w.rx*f;by=CY+Math.sin(a)*w.ry*f;ok=this.blobs.every(b=>Math.hypot(b.bx-bx,b.by-by)>16);}
-  this.blobs.push({bx,by,x:bx,y:by,r:Math.max(5.5,rand(7.5,9.5)-idx*.5),gold:i>0&&Math.random()<.2,c:Math.random()<.6?'#e8cf6a':'#b9b3a3',ph:rand(0,6),amp:idx*2.2,sp:1.4+idx*.35,gone:false});}this.slips=0;this.done=0;this.flash=null;this.chain=0;},
- update(dt){if(!(G.freezeT>0))this.mt=(this.mt||0)+dt;for(const b of this.blobs){b.x=b.bx+Math.sin(this.mt*b.sp+b.ph)*b.amp;b.y=b.by+Math.cos(this.mt*b.sp*.8+b.ph)*b.amp*.5;}if(this.flash)this.flash.t-=dt;if(this.done&&this.t-this.done>1.3)go(Dress);},
+  const dt_=p.deb||'slough',single=p.slough===1;this.blobs.push({bx:single?CX:bx,by:single?CY:by,x:bx,y:by,kind:dt_,r:dt_==='gravel'?rand(5,7):single?7:Math.max(5.5,rand(7.5,9.5)-idx*.5),gold:(dt_==='slough'||dt_==='gravel')&&i>0&&Math.random()<.2,c:pick(DEB_COL[dt_]||DEB_COL.slough),ph:rand(0,6),amp:idx*2.2,sp:1.4+idx*.35,gone:false});}this.slips=0;this.done=0;this.flash=null;this.chain=0;},
+ update(dt){if(!(G.freezeT>0))this.mt=(this.mt||0)+dt;for(const b of this.blobs){b.x=b.bx+Math.sin(this.mt*b.sp+b.ph)*b.amp;b.y=b.by+Math.cos(this.mt*b.sp*.8+b.ph)*b.amp*.5;}if(this.flash)this.flash.t-=dt;if(this.done&&this.t-this.done>1.3)nextStep();},
  down(q){if(this.done)return;let best=null,bd=1e9;for(const b of this.blobs){if(b.gone)continue;const d=Math.hypot(b.x-q.x,b.y-q.y);if(d<b.r+(G.expertT>0?12:5)&&d<bd){best=b;bd=d;}}
   if(best)this.pluck(best);
   else if(pointInPoly(q.x,q.y,this.p.wound.pts)){this.slips++;this.chain=0;this.p.mistakes++;this.p.happy-=8;SFX.bad();G.shake=.3;this.flash={x:q.x,y:q.y,t:.4};react('ouch');fx('OUCH! HEALTHY TISSUE!',180,150,C.red,8);}},
@@ -589,15 +676,30 @@ const Debride={clock:true,care:true,
   if(best.gold){addScore(300);fx('CRITICAL! +300',best.x,best.y-16,'#ffe066',9);burst(best.x,best.y,'#ffe066',16);sparkle(best.x,best.y,14,10);tone(1568,.12,'square',.25,.05);tone(2093,.18,'square',.25,.13);}
   else{addScore(50);fx('+50',best.x,best.y-14,C.gold);burst(best.x,best.y,best.c,6);}react('relief');
    if(this.blobs.every(b=>b.gone)){this.done=Math.max(this.t,.001);react('happy');award(2,this.slips===0?3:this.slips===1?2:1);if(this.slips===0){G.perfect++;this.p.perfect=true;addScore(300);SFX.coin();startCut({title:'FLAWLESS!',sub:'Perfect debride. Not one slip.',chars:[G.char],col:C.teal,pose:{la:'up',ra:'up',legs:'tuck'}});this.p.happy+=10;}else{SFX.good();fx('ALL CLEAR!',180,190,C.teal,10);this.p.happy+=4;}}},
- draw(){careFrame(3,'DEBRIDE',"Pluck the yellow & gray slough. Don't touch the healthy pink tissue!");drawWound(this.p);
-  for(const b of this.blobs)if(!b.gone){if(G.expertT>0){ctx.strokeStyle=C.teal;ctx.lineWidth=2.5;ctx.globalAlpha=.6+.3*Math.sin(gT*8);ctx.beginPath();ctx.arc(b.x,b.y,b.r+8,0,7);ctx.stroke();ctx.globalAlpha=1;}if(b.gold){ctx.globalAlpha=.35+.25*Math.sin(gT*8);ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(b.x,b.y,b.r+6,0,7);ctx.fill();ctx.globalAlpha=1;}ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(b.x,b.y,b.r+1.5,0,7);ctx.fill();ctx.fillStyle=b.gold?'#ffd23f':b.c;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();rect(b.x-b.r/2,b.y-b.r/2,3,3,'rgba(255,255,255,.6)');}
+ draw(){careFrame(3,this.label,DEB_TXT[this.p.deb]||DEB_TXT.slough);drawWound(this.p);
+  for(const b of this.blobs)if(!b.gone){if(G.expertT>0){ctx.strokeStyle=C.teal;ctx.lineWidth=2.5;ctx.globalAlpha=.6+.3*Math.sin(gT*8);ctx.beginPath();ctx.arc(b.x,b.y,b.r+8,0,7);ctx.stroke();ctx.globalAlpha=1;}if(b.gold){ctx.globalAlpha=.35+.25*Math.sin(gT*8);ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(b.x,b.y,b.r+6,0,7);ctx.fill();ctx.globalAlpha=1;}if(b.kind==='hook'){ctx.lineCap='round';ctx.strokeStyle=C.ink;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(b.x+2,b.y-16);ctx.lineTo(b.x+2,b.y+2);ctx.arc(b.x-3,b.y+2,5,0,Math.PI);ctx.stroke();ctx.strokeStyle=b.c;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(b.x+2,b.y-16);ctx.lineTo(b.x+2,b.y+2);ctx.arc(b.x-3,b.y+2,5,0,Math.PI);ctx.stroke();}
+   else if(b.kind==='thorn'||b.kind==='stinger'){ctx.beginPath();ctx.moveTo(b.x-6,b.y+5);ctx.lineTo(b.x+6,b.y+5);ctx.lineTo(b.x,b.y-(b.kind==='thorn'?14:9));ctx.closePath();ctx.fillStyle=b.c;ctx.fill();ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.stroke();}
+   else if(b.kind==='gravel'){ctx.beginPath();for(let k=0;k<6;k++){const a=k/6*6.283+b.ph,rr_=b.r*(.75+.25*Math.sin(k*2.1+b.ph));k?ctx.lineTo(b.x+Math.cos(a)*rr_,b.y+Math.sin(a)*rr_):ctx.moveTo(b.x+Math.cos(a)*rr_,b.y+Math.sin(a)*rr_);}ctx.closePath();ctx.fillStyle=b.gold?'#ffd23f':b.c;ctx.fill();ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.stroke();}
+   else{ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(b.x,b.y,b.r+1.5,0,7);ctx.fill();ctx.fillStyle=b.gold?'#ffd23f':b.c;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();rect(b.x-b.r/2,b.y-b.r/2,3,3,'rgba(255,255,255,.6)');}}
   if(this.flash&&this.flash.t>0){ctx.globalAlpha=this.flash.t/.4;ctx.fillStyle=C.red;ctx.beginPath();ctx.arc(this.flash.x,this.flash.y,14,0,7);ctx.fill();ctx.globalAlpha=1;}
   if(ptr.x>20&&ptr.x<340&&ptr.y>128&&ptr.y<420&&!this.done)drawTweezers(ptr.x,ptr.y,ptr.down);
-  const left=this.blobs.filter(b=>!b.gone).length;txt('SLOUGH LEFT: '+left,80,494,7,C.gold,'left');txt('SLIPS: '+this.slips,80,514,7,this.slips?C.red:C.teal,'left');}
+  const left=this.blobs.filter(b=>!b.gone).length;txt(({gravel:'GRAVEL',stinger:'STINGER',thorn:'THORN',hook:'HOOK'}[this.p.deb]||'SLOUGH')+' LEFT: '+left,80,494,7,C.gold,'left');txt('SLIPS: '+this.slips,80,514,7,this.slips?C.red:C.teal,'left');}
 };
 
-const Dress={clock:true,care:true,
- enter(){this.p=cur();this.tiles=DRESSINGS.map((d,i)=>Object.assign({},d,{x:76+i*70,y:452,w:62,h:64,hx:76+i*70,hy:452,hidden:false}));this.drag=null;this.applied=null;this.done=0;this.wrong=0;},
+const Decide={clock:true,care:true,label:'DECIDE',
+ enter(){const p=this.p=cur(),q=this.q=p.q;this.done=0;this.wrong=0;const opts=shuffle([q[1],q[2],q[3]]);
+  this.buttons=opts.map((o,i)=>{const b=btn(o,24,214+i*62,312,50,()=>this.pick(b),{col:'#ffffff',tc:C.ink,size:9});b.opt=o;return b;});},
+ pick(b){if(this.done||b.disabled)return;if(b.opt===this.q[1]){this.done=Math.max(this.t,.001);b.col=C.teal;SFX.good();react('happy');this.p.happy+=6;addScore(120);fx('SMART CALL!',180,196,C.teal,10);award(0,this.wrong===0?3:this.wrong===1?2:1);this.buttons.forEach(x=>{if(x!==b)x.disabled=true;});}
+  else{b.disabled=true;this.wrong++;SFX.bad();react('huh');this.p.happy-=4;G.stress+=6;fx('NOT QUITE',180,196,C.red,9);}},
+ power(){const w=this.buttons.find(b=>!b.disabled&&b.opt!==this.q[1]);if(w)w.disabled=true;},
+ update(){if(this.done&&this.t-this.done>1.2)nextStep();},
+ draw(){careFrame(0,'DECIDE','Choose the best next step for this patient.');drawWound(this.p);ctx.globalAlpha=.92;rr(20,128,320,292,10);ctx.fillStyle=C.plum2;ctx.fill();ctx.globalAlpha=1;
+  rr(30,138,58,58,12);ctx.fillStyle='#eaf4fb';ctx.fill();ctx.save();rr(30,138,58,58,12);ctx.clip();drawMiniHead(33,141,7,this.p,this.p.react&&gT-this.p.react.t<1.5?this.p.react.kind:'calm');ctx.restore();
+  wrapTxt(this.q[0],98,154,232,22,C.white,20,VT,'left');},
+ overlay(){if(G.expertT>0&&!this.done){const b=this.buttons.find(x=>x.opt===this.q[1]);if(b){ctx.globalAlpha=.6+.3*Math.sin(gT*8);ctx.strokeStyle=C.teal;ctx.lineWidth=3;rr(b.x-5,b.y-5,b.w+10,b.h+10,16);ctx.stroke();ctx.globalAlpha=1;}}}
+};
+const Dress={clock:true,care:true,label:'DRESS',
+ enter(){this.p=cur();const right=DRESSINGS.find(d=>d.id===this.p.dressing),pickD=shuffle([right,...shuffle(DRESSINGS.filter(d=>d!==right)).slice(0,3)]);this.tiles=pickD.map((d,i)=>Object.assign({},d,{x:76+i*70,y:452,w:62,h:64,hx:76+i*70,hy:452,hidden:false}));this.drag=null;this.applied=null;this.done=0;this.wrong=0;},
  down(q){if(this.done)return;for(const t of this.tiles)if(!t.hidden&&hit(t,q)){this.drag=t;this.off={x:q.x-t.x,y:q.y-t.y};SFX.blip();return;}},
  move(q){if(this.drag){this.drag.x=q.x-this.off.x;this.drag.y=q.y-this.off.y;}},
  up(){const t=this.drag;if(!t)return;this.drag=null;const cx=t.x+t.w/2,cy=t.y+t.h/2,w=this.p.wound;const inside=((cx-CX)/(w.rx*1.6))**2+((cy-CY)/(w.ry*1.6+24))**2<=1;
@@ -605,15 +707,18 @@ const Dress={clock:true,care:true,
   t.x=t.hx;t.y=t.hy;},
  power(){const t=this.tiles.find(x=>x.id===this.p.dressing);this.drag=null;this.apply(t);},
  apply(t){this.applied=t.id;this.done=Math.max(this.t,.001);t.hidden=true;SFX.good();addScore(150);this.p.happy+=8;fx('GREAT CHOICE!',180,200,C.teal,10);react('happy');award(3,this.wrong===0?3:this.wrong===1?2:1);},
- update(){if(this.done&&this.t-this.done>1.4)go(After);},
+ update(){if(this.done&&this.t-this.done>1.4)nextStep();},
  tile(t){const lift=t===this.drag;if(G.expertT>0&&t.id===this.p.dressing&&!lift){ctx.globalAlpha=.5+.3*Math.sin(gT*8);rr(t.x-6,t.y-6,t.w+12,t.h+12,10);ctx.fillStyle=C.teal;ctx.fill();ctx.globalAlpha=1;}if(lift)rect(t.x+4,t.y+6,t.w,t.h,'rgba(0,0,0,.35)');box(t.x,t.y,t.w,t.h,'#f4f0ff',lift?C.gold:C.ink);const x=t.x,y=t.y;
   if(t.id==='foam'){box(x+15,y+8,32,24,'#f6d98b');for(let i=0;i<6;i++)rect(x+19+(i%3)*9,y+13+Math.floor(i/3)*9,3,3,'#d9b45c');}
   else if(t.id==='alginate'){box(x+15,y+8,32,24,'#ffffff');ctx.strokeStyle='#b8bdd0';ctx.lineWidth=1;for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(x+16,y+12+i*5);ctx.bezierCurveTo(x+24,y+8+i*5,x+36,y+16+i*5,x+46,y+12+i*5);ctx.stroke();}}
   else if(t.id==='hydrocolloid'){box(x+13,y+8,36,24,'#d9a96a');rect(x+19,y+13,24,14,'#e8c48f');}
+  else if(t.id==='silver'){box(x+15,y+8,32,24,'#c9ced6');ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;for(let k=0;k<3;k++){ctx.beginPath();ctx.moveTo(x+19+k*9,y+28);ctx.lineTo(x+25+k*9,y+12);ctx.stroke();}emo('✨',x+44,y+10,10);}
+  else if(t.id==='contact'){box(x+15,y+8,32,24,'#f4f8ff');ctx.strokeStyle='#9fb6d6';ctx.lineWidth=1;for(let k=1;k<4;k++){line({x:x+15+k*8,y:y+8},{x:x+15+k*8,y:y+32});line({x:x+15,y:y+8+k*6},{x:x+47,y:y+8+k*6});}}
+  else if(t.id==='gauze'){box(x+15,y+8,32,24,'#ffffff');ctx.strokeStyle='#e0e4ec';ctx.lineWidth=1;for(let k=0;k<6;k++){line({x:x+17+k*5,y:y+8},{x:x+17+k*5,y:y+32});}}
   else{box(x+14,y+12,26,14,C.blue);box(x+42,y+15,6,8,'#2a6f97');ctx.fillStyle='#8fe3ff';ctx.beginPath();ctx.arc(x+24,y+36,3,0,7);ctx.fill();}
   txt(t.l1,x+t.w/2,t.l2?y+44:y+48,6,C.ink);if(t.l2)txt(t.l2,x+t.w/2,y+54,6,C.ink);},
  dressing(){const w=this.p.wound,k=Math.min(1,(this.t-this.done)*5),dw=(w.rx*2.6+10)*k,dh=(w.ry*2.6+14)*k,x=CX-dw/2,y=CY-dh/2,id=this.applied;
-  const col={foam:'#f6e2a6',alginate:'#ffffff',hydrocolloid:'#e2b882',hydrogel:'#ffffff'}[id];if(id==='hydrogel'){polyPath(w.pts,1.05);ctx.fillStyle='rgba(76,201,240,.8)';ctx.fill();}
+  const col={foam:'#f6e2a6',alginate:'#ffffff',hydrocolloid:'#e2b882',hydrogel:'#ffffff',silver:'#c9ced6',contact:'#f4f8ff',gauze:'#ffffff'}[id];if(id==='hydrogel'){polyPath(w.pts,1.05);ctx.fillStyle='rgba(76,201,240,.8)';ctx.fill();}
   ctx.globalAlpha=id==='hydrocolloid'?.88:1;box(x,y,dw,dh,col);ctx.globalAlpha=1;rect(x-6,y,8,dh,'rgba(255,255,255,.85)');rect(x+dw-2,y,8,dh,'rgba(255,255,255,.85)');if(k>=1)emo('✨',x+dw-6,y+6,14);},
  draw(){careFrame(4,'DRESS','Drag the best dressing for this wound onto it.');drawWound(this.p);box(28,136,304,22,'#fff6cc');txt('💧 '+this.p.note,180,148,19,C.ink,'center',VT);if(this.applied)this.dressing();for(const t of this.tiles)if(!t.hidden&&t!==this.drag)this.tile(t);if(this.drag)this.tile(this.drag);}
 };
@@ -630,7 +735,7 @@ const After={clock:true,
   drawPerson(232,132,4,G.char);loveEmote(256,112,t);
   meter(20,236,320,16,p.happy/100,C.pink,'PATIENT HAPPINESS '+p.happy+'%');
   txt(G.combo>1?'COMBO x'+G.combo+'!  +'+this.bonus:'COMBO x'+G.combo,180,272,8,G.combo>1?C.gold:C.gray);
-  p.stars.forEach((n,i)=>{const x=24+i*80;txt(STEP_NAMES[i],x+36,288,5,C.gray);txt('★★★'.slice(0,n)+'☆☆☆'.slice(0,3-n),x+36,302,9,C.gold);});
+  const LBL={A:'MEASURE',C:'CLEANSE',D:'DEBRIDE',R:'DRESS',Q:'DECIDE'},cw=320/Math.max(1,p.stars.length);p.stars.forEach((n,i)=>{const x=20+i*cw-36+cw/2;txt(LBL[p.stepKeys[i]]||'',x+36,288,5,C.gray);txt('★★★'.slice(0,n)+'☆☆☆'.slice(0,3-n),x+36,302,9,C.gold);});
   const it=ITEM_INFO[this.item.type];box(20,320,320,98,C.plum2,this.item.got?C.teal:C.gold);emo(it.e,62,368+(this.item.got?0:Math.sin(t*4)*5),34);txt(it.n,104,346,7,C.gold,'left');txt(it.d,104,370,18,C.white,'left',VT);
   if(this.item.got)txt('GOT IT!',104,396,7,C.teal,'left');else if(Math.floor(t*2)%2)txt('TAP TO GRAB',104,396,7,C.white,'left');
   txt('📄 Unsigned notes: '+(G.treated-G.charts),180,442,20,C.pink2,'center',VT);}
@@ -639,7 +744,7 @@ const After={clock:true,
 const POPMSG=['Session timed out.','Required field missing.','Are you sure you want to save?','Your password expires in 3 days.','Allergies not reviewed!','Note is open by another user.'];
 const Chart={clock:true,
  enter(){const p=this.p=cur();Music.play('elevator');const two=a=>shuffle(a).slice(0,2),sz=(L,Wd)=>L.toFixed(1)+' × '+Wd.toFixed(1)+' cm';
-  this.qs=[{q:'Wound location?',tag:'LOC',a:p.loc,o:[p.loc,...two(PATIENTS.map(x=>x.loc).filter(l=>l!==p.loc))]},
+  this.qs=[{q:'Wound location?',tag:'LOC',a:p.loc,o:[p.loc,...two([...new Set(SCENARIOS.map(x=>x.loc))].filter(l=>l!==p.loc))]},
    {q:'Wound size (L × W)?',tag:'SIZE',a:sz(p.L,p.W),o:[sz(p.L,p.W),sz(p.L+1.2,p.W),sz(p.L,p.W+.9)]},
    {q:'Drainage amount?',tag:'DRAIN',a:p.drain,o:[p.drain,...two(['None','Light','Moderate','Heavy'].filter(d=>d!==p.drain))]},
    {q:'Dressing applied?',tag:'DRSG',a:dName(p.dressing),o:[dName(p.dressing),...two(DRESSINGS.map(d=>d.name).filter(n=>n!==dName(p.dressing)))]}];
@@ -751,7 +856,7 @@ const Boss={
 const Ceremony={
  enter(){Music.play('throne');this.flags={};this.again=btn('PLAY AGAIN',16,488,160,44,()=>go(Select),{col:C.pink});this.lb=btn('LEADERBOARD',184,488,160,44,()=>go(Board,Select),{col:C.gold,tc:C.ink,size:7});this.again.hidden=true;this.lb.hidden=true;this.again.focus=true;this.buttons=[this.again,this.lb];
   const avg=G.happy.length?G.happy.reduce((a,b)=>a+b,0)/G.happy.length:0;this.badges=[];if(avg>=70)this.badges.push('Healer of the Day');if(G.charts>=G.patients.length)this.badges.push('No Chart Left Behind');if(G.perfect>=G.patients.length)this.badges.push('Steady Hands');if(G.bestCombo>=3)this.badges.push('Combo x'+G.bestCombo);this.badges.push('Survived Epic Friday');
-  this.title=G.char.name==='Brook'?'LONG LIVE KING BROOK':G.char.name==='Tisha'?'LONG LIVE QUEEN TISHA':(G.char.g==='M'?'SIR ':'DAME ')+G.char.name.toUpperCase();this.max=N()*12;const best=Number(store.get('ww-best',0))||0;this.newBest=G.score>best;if(this.newBest)store.set('ww-best',G.score);submitScore({warrior:G.char.name,g:G.char.g,score:G.score,stars:G.stars,starsMax:this.max,at:Date.now()});},
+  this.title=G.char.name==='Brook'?'LONG LIVE KING BROOK':G.char.name==='Tisha'?'LONG LIVE QUEEN TISHA':(G.char.g==='M'?'SIR ':'DAME ')+G.char.name.toUpperCase();this.max=G.patients.reduce((a,q)=>a+q.stepKeys.length*3,0);const best=Number(store.get('ww-best',0))||0;this.newBest=G.score>best;if(this.newBest)store.set('ww-best',G.score);submitScore({warrior:G.char.name,g:G.char.g,score:G.score,stars:G.stars,starsMax:this.max,at:Date.now()});},
  once(k,t,f){if(this.t>t&&!this.flags[k]){this.flags[k]=1;f();}},
  update(){this.once('s1',2.8,()=>SFX.sword());this.once('s2',3.4,()=>SFX.sword());this.once('cr',5.4,()=>SFX.coin());this.once('fan',5.8,()=>{SFX.fanfare();confetti(90);});this.once('hh',6.6,()=>Music.play('victory'));this.once('best',6.7,()=>{if(this.newBest)startCut({title:'NEW BEST!',sub:'Personal best: '+G.score.toLocaleString(),chars:[G.char],col:C.pink,pose:{la:'up',ra:'diagUp',legs:'kickL'}});showRankUp();});if(this.t>6&&Math.random()<.25)confetti(2);if(this.t>7){this.again.hidden=false;this.lb.hidden=false;}},
  draw(){const t=this.t;rect(0,0,W,H,'#152257');rect(0,94,W,226,'#23307a');for(let y=94;y<320;y+=16)for(let x=(y/16)%2?0:16;x<W;x+=32)rect(x,y,1,16,'#1d2a6a');for(let y=110;y<320;y+=16)rect(0,y,W,1,'#1d2a6a');
@@ -774,7 +879,7 @@ const Ceremony={
   if(t>6.2){txtS('SCORE '+G.score.toLocaleString()+'  ★'+G.stars+'/'+this.max+(this.newBest?'  NEW BEST!':''),180,354,7,C.gold);drawRank(180,372,150);this.badges.slice(0,3).forEach((b,i)=>txt('🏅 '+b,180,420+i*19,19,C.white,'center',VT));}}
 };
 
-const Lose={enter(){Music.stop();SFX.sigh();const B=Boss.B||{hp:1,max:1};this.left=B.hp;this.pct=Math.round(100*(1-B.hp/B.max));showRankUp();this.buttons=[btn('RETRY BOSS',22,474,150,48,()=>{go(Boss);startCut({title:'ROUND 2',sub:'Rematch! FIGHT!',col:C.red,dur:1.2});},{col:C.red}),btn('NEW SHIFT',188,474,150,48,()=>go(Select),{col:C.blue})];this.buttons[0].focus=true;},
+const Lose={trophy:{x:298,y:2,w:30,h:22},enter(){Music.stop();SFX.sigh();const B=Boss.B||{hp:1,max:1};this.left=B.hp;this.pct=Math.round(100*(1-B.hp/B.max));showRankUp();this.buttons=[btn('RETRY BOSS',22,474,150,48,()=>{go(Boss);startCut({title:'ROUND 2',sub:'Rematch! FIGHT!',col:C.red,dur:1.2});},{col:C.red}),btn('NEW SHIFT',188,474,150,48,()=>go(Select),{col:C.blue})];this.buttons[0].focus=true;},
  draw(){const t=this.t;rect(0,0,W,H,'#08121f');txtS('OVERTIME!',180,40,22,C.red);drawBossBody({hp:1,max:1,flash:0},40+Math.sin(t*12)*3,t,180);txtS('HA HA HA',180+Math.sin(t*9)*6,300,10,C.gold);
   drawPerson(162,320,3,G.char);stressEmote(180,302,t);txtS(this.pct>=60?'SO CLOSE!':'NOT THIS TIME',180,392,10,this.pct>=60?C.gold:C.white);fitTxt('MEGA-CHART had only '+this.left+' HP left ('+this.pct+'% beaten)',180,414,330,19,C.white);wrapTxt('✓ Your shift is saved. Retry the boss from the checkpoint!',180,434,320,18,C.teal,18,VT,'center');}
 };
@@ -782,7 +887,8 @@ const Lose={enter(){Music.stop();SFX.sigh();const B=Boss.B||{hp:1,max:1};this.le
 /* ---------- where to look next (hints) ---------- */
 Title.hint=function(){return null;};
 Select.hint=function(){if(!this.sel){const r=this.cell(0);return{mode:'tap',x:r.x+52,y:r.y+34,text:'Tap a fighter'};}return{mode:'tap',x:180,y:506,text:'Ready? FIGHT!'};};
-Ward.hint=function(){return this.b.hidden?null:{mode:'tap',x:285,y:431,text:'Tap to begin care'};};
+Ward.hint=function(){return this.acc.hidden?null:{mode:'chip',x:180,y:290,text:'Read their story: wound care or not?'};};
+Decide.hint=function(){return this.done?null:{mode:'chip',x:180,y:420,text:'Tap the best answer'};};
 Assess.hint=function(){if(this.done||this.a)return null;const p=this.p;return this.phase==='L'?{mode:'drag',x:CX-p.L*13,y:CY,x2:CX+p.L*13,y2:CY,text:'Drag edge to edge'}:{mode:'drag',x:CX,y:CY-p.W*13,x2:CX,y2:CY+p.W*13,text:'Now top to bottom'};};
 Cleanse.hint=function(){return this.done?null:{mode:'rub',x:CX,y:CY,text:'Rub back and forth'};};
 Debride.hint=function(){if(this.done)return null;const b=this.blobs.find(b=>!b.gone);return b?{mode:'tap',x:b.x,y:b.y,text:'Tap the yellow and gray bits'}:null;};
@@ -808,7 +914,12 @@ function drawBands(){const m=scene.side,top=OY/2,bot=OY+H+OY/2;
  if(m==='game'||m==='boss'){const n=N();for(let i=0;i<n;i++){const p=G.patients[i],x=OX+W/2+(i-(n-1)/2)*84,st=i<G.treated?'done':i===G.pi?'now':'wait';if(st==='now')box(x-38,top-16,76,32,C.plum3,C.gold);emo(st==='done'?(p.charted?'✅':'💗'):st==='now'?'🩹':'🛏️',x-24,top,14);txt(p.name.replace(/^(Mr|Ms|Mrs)\. /,''),x-12,top,15,st==='wait'?C.gray:C.white,'left',VT);}}
  else txtS('WOUND WARRIORS',OX+W/2,top,9,C.pink);
  if(m==='game'||m==='boss')return;const k=Math.max(1,Math.min(8,Math.floor(VW/44))),s=Math.min(2,Math.floor((OY-12)/18)||1);for(let i=0;i<k;i++){const c=ALL[(i*4+Math.floor(gT/5))%ALL.length],x=(i+.5)*VW/k;drawPerson(x-6*s,bot-9*s,s,c,{dance:gT+i*.4,seed:i});}}
-function drawPanels(){
+let TOP3R=null;
+function drawTop3(Rx,pw,tappable){const x=Rx-pw/2,y=404,h=118;panel(x,y,pw,h);txt('🏆 TOP 3'+(LB.state==='live'?' · LIVE':''),Rx,y+20,7,C.gold);
+ const rows=(LB.state==='live'?LB.rows:LB.local).slice(0,3);if(!rows.length)fitTxt('No champions yet. Be the first!',Rx,y+62,pw-20,18,C.pink2);
+ rows.forEach((r,i)=>{const yy=y+44+i*22;emo(['🥇','🥈','🥉'][i],x+18,yy,13);fitTxt(titleOf(r),x+32,yy+1,pw-110,18,C.white,'left');txt(r.score.toLocaleString(),x+pw-12,yy+1,7,C.gold,'right');});
+ if(tappable){txt('tap for full leaderboard',Rx,y+h-9,13,C.gray,'center',VT);TOP3R={x:x-OX,y,w:pw,h};}}
+function drawPanels(){TOP3R=null;
  const m=scene.side,Lx=OX/2,Rx=OX+W+OX/2,pw=Math.min(OX-28,236);if(OX<120||!m)return;
  const s=Math.max(3,Math.min(7,Math.floor((pw-24)/12)));
  if(m==='party'){for(let k=0;k<6;k++){const cx=k<3?Lx:Rx,y=110+(k%3)*140,c=ALL[(k*5+Math.floor(gT/4))%ALL.length],ss=Math.min(s,4);drawPerson(cx-6*ss,y,ss,c,{dance:gT+k*.3,seed:k*3});txt(moveName(gT+k*.3,k*3),cx,y+18*ss+28,5,C.gold);txt(c.name.toUpperCase(),cx,y+18*ss+14,6,C.pink2);}return;}
@@ -816,23 +927,23 @@ function drawPanels(){
  if(m==='select'){panel(Lx-pw/2,60,pw,390);const c=Select.hover||Select.sel;txt(Select.hover&&Select.hover!==Select.sel?'PREVIEW':Select.sel?'READY TO FIGHT!':'CHOOSE YOUR FIGHTER!',Lx,82,7,C.gold);
   if(!c){wrapTxt('Hover over a fighter to preview them here',Lx,190,pw-30,20,C.pink2,20,VT,'center');emo('👉',Lx,250+Math.sin(gT*4)*4,30);}else{sideNurse(Lx,150,s,c,false);txt(c.name.toUpperCase(),Lx,150+18*s+18,8,C.white);const po=powerOf(c);fitTxt('⚡ '+po.name,Lx,150+18*s+82,pw-20,18,C.gold);wrapTxt(po.d,Lx,150+18*s+100,pw-24,16,C.pink2,16,VT,'center');}
   panel(Rx-pw/2,60,pw,330);txt('HOW TO PLAY',Rx,82,7,C.gold);
-  ['💗 Heal 3 patients: measure, cleanse, debride, dress','📄 Chart your notes (yes, really)','👾 Beat MEGA-CHART 3000 at 5 PM','👑 Get knighted by King Brook & Queen Tisha'].forEach((l,i)=>wrapTxt(l,Rx-pw/2+14,116+i*66,pw-28,19,C.white,18,VT,'left'));return;}
+  ['💗 Heal 3 patients: measure, cleanse, debride, dress','📄 Chart your notes (yes, really)','👾 Beat MEGA-CHART 3000 at 5 PM','👑 Get knighted by King Brook & Queen Tisha'].forEach((l,i)=>wrapTxt(l,Rx-pw/2+14,116+i*66,pw-28,19,C.white,18,VT,'left'));drawTop3(Rx,pw,true);return;}
  const stressy=scene===Chart||m==='boss';
  panel(Lx-pw/2,60,pw,350);txt('YOUR FIGHTER',Lx,82,7,C.gold);sideNurse(Lx,150,s,G.char,stressy);txt(G.char.name.toUpperCase(),Lx,150+18*s+18,8,C.white);txt(stressy?'Charting... again 😤':'Happy to heal 💗',Lx,150+18*s+42,20,stressy?C.pink2:C.teal,'center',VT);{const po=powerOf(G.char);txt('⚡ '+po.name,Lx,150+18*s+80,17,G.powerReady?C.gold:C.gray,'center',VT);txt(G.powerReady?'READY · tap your nurse':'used · recharges next patient',Lx,150+18*s+97,15,C.gray,'center',VT);}
  panel(Rx-pw/2,60,pw,330);
  if(m==='boss'){const B=Boss.B;txt('INCOMING ATTACKS',Rx,82,7,C.gold);
   [['📨','Pop-Up Storm','Dodge the falling boxes',B.storm>0],['🔒','Password Expired','Tap the letters in order',!!B.pw],['🌀','Spinning Wheel','You freeze. Wait it out',B.spin>0],['✒️','Missing Signature','It chases you. Keep moving',!!B.sig]].forEach(([e,n,d,on],i)=>{const y=112+i*58;if(on)box(Rx-pw/2+8,y-14,pw-16,50,C.plum3,C.gold);emo(e,Rx-pw/2+24,y+6,18);txt(n,Rx-pw/2+42,y,19,on?C.gold:C.white,'left',VT);txt(d,Rx-pw/2+42,y+18,16,C.gray,'left',VT);});
-  wrapTxt('Each signed chart = 8 ammo. Stress maxed = lose 5 sec.',Rx,358,pw-24,17,C.pink2,17,VT,'center');return;}
+  wrapTxt('Each signed chart = 8 ammo. Stress maxed = lose 5 sec.',Rx,358,pw-24,17,C.pink2,17,VT,'center');drawTop3(Rx,pw,false);return;}
  txt('SHIFT BOARD',Rx,82,7,C.gold);
  G.patients.forEach((p,i)=>{const y=108+i*40,st=i<G.treated?'done':i===G.pi?'now':'wait',x0=Rx-pw/2+12;if(st==='now')box(x0-4,y-12,pw-16,36,C.plum3,C.gold);
   txt(p.name,x0+2,y,19,st==='wait'?C.gray:C.white,'left',VT);txt(p.loc,x0+2,y+15,15,C.gray,'left',VT);
   emo(st==='done'?'💗':st==='now'?'🩹':'🛏️',Rx+pw/2-40,y+6,14);if(st==='done')emo(p.charted?'✅':'📄',Rx+pw/2-20,y+6,14);});
  txt('Charts signed: '+G.charts+'/'+N(),Rx,320,18,C.teal,'center',VT);txt('Best combo x'+G.bestCombo+' · Perfect '+G.perfect,Rx,340,17,C.pink2,'center',VT);
- txt('M = mute',Rx,372,15,C.gray,'center',VT);}
+ txt('M = mute',Rx,372,15,C.gray,'center',VT);drawTop3(Rx,pw,false);}
 
 /* ---------- loop & input ---------- */
 const keys={};
-addEventListener('keydown',e=>{keys[e.key]=true;G.idle=0;if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();if(e.key==='m'||e.key==='M'){toggleMute();return;}if(G.cut){if(G.cut.t>.5){G.cut=null;if(G.cutQ.length)startCut(G.cutQ.shift());}return;}if((e.key==='p'||e.key==='P'||(e.key===' '&&scene===Boss))&&!(scene===Boss&&Boss.B&&Boss.B.pw)){initAudio();usePower();return;}if((e.key==='f'||e.key==='F')&&!(scene===Boss&&Boss.B&&Boss.B.pw)){toggleFs();return;}initAudio();if(scene.key)scene.key(e.key);});
+addEventListener('keydown',e=>{keys[e.key]=true;G.idle=0;if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();if(e.key==='m'||e.key==='M'){toggleMute();return;}if((e.key==='l'||e.key==='L')&&(scene===Title||scene===Select||scene===Lose)){go(Board,scene);return;}if(G.cut){if(G.cut.t>.5){G.cut=null;if(G.cutQ.length)startCut(G.cutQ.shift());}return;}if((e.key==='p'||e.key==='P'||(e.key===' '&&scene===Boss))&&!(scene===Boss&&Boss.B&&Boss.B.pw)){initAudio();usePower();return;}if((e.key==='f'||e.key==='F')&&!(scene===Boss&&Boss.B&&Boss.B.pw)){toggleFs();return;}initAudio();if(scene.key)scene.key(e.key);});
 addEventListener('keyup',e=>{keys[e.key]=false;});
 const ptr={x:-99,y:-99,down:false};
 function toL(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*VW-OX,y:(e.clientY-r.top)/r.height*VH-OY,mouse:e.pointerType==='mouse'};}
@@ -844,6 +955,8 @@ function toL(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r
 document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AC&&AC.state!=='running'){try{AC.resume();}catch(e){}}});
 cv.addEventListener('pointerdown',e=>{e.preventDefault();cv.focus();initAudio();if(scene===Title)Music.play('funk');const p=toL(e);ptr.x=p.x;ptr.y=p.y;ptr.down=true;G.idle=0;try{cv.setPointerCapture(e.pointerId);}catch(_){}
  if(p.x>=330&&p.y<=22){toggleMute();return;}
+ if(!G.cut&&scene.trophy&&hit(scene.trophy,p)){SFX.blip();go(Board,scene===Ceremony?Select:scene);return;}
+ if(!G.cut&&TOP3R&&(scene===Select||scene===Title)&&hit(TOP3R,p)){SFX.blip();go(Board,scene);return;}
  if(G.cut){if(G.cut.t>.5){G.cut=null;if(G.cutQ.length)startCut(G.cutQ.shift());}return;}
  if(G.powerReady&&((scene.care&&p.x<62&&p.y>428)||(scene===Chart&&!Chart.popup&&p.x<74&&p.y>422&&p.y<522))&&usePower())return;
  const blocked=scene.blocking&&scene.blocking();if(!blocked)for(const b of scene.buttons||[])if(!b.hidden&&!b.disabled&&hit(b,p)){pressed=b;return;}
@@ -871,7 +984,7 @@ function draw(){ctx.setTransform(DPR,0,0,DPR,0,0);ctx.imageSmoothingEnabled=fals
  for(const p of G.parts){ctx.globalAlpha=clamp((p.life-p.t)/(p.life*.3),0,1);rect(p.x,p.y,p.s,p.s,p.c);}ctx.globalAlpha=1;
  for(const f of G.fx){ctx.globalAlpha=clamp((f.life-f.t)/.4,0,1);ctx.font=fnt(f.size,PX);const w=ctx.measureText(f.s).width;txtS(f.s,clamp(f.x,w/2+4,W-w/2-4),f.y,f.size,f.col);}ctx.globalAlpha=1;
  if(G.cut)drawCut();
- ctx.restore();ctx.save();ctx.translate(OX,OY);drawMute();ctx.restore();}
+ ctx.restore();ctx.save();ctx.translate(OX,OY);drawMute();if(scene.trophy&&!G.cut)drawTrophy(scene.trophy);ctx.restore();}
 let last=performance.now();
 function frame(now){const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;try{update(dt);draw();}catch(err){console.error(err);}requestAnimationFrame(frame);}
 go(Title);requestAnimationFrame(frame);
