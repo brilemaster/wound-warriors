@@ -14,6 +14,7 @@
 /* Layout: one arcade screen, centered and scaled to fit the viewport. Single deliberate dark arcade look. */
 :root{--bg:#08121f;--frame:#1e3d6b;--fg:#f2f8ff;--accent:#8fc15a;--ink:#071322;color-scheme:dark}
 html,body{height:100%;overscroll-behavior:none}
+@supports (height:100dvh){html,body{height:100dvh}}
 body{background:var(--bg);color:var(--fg);margin:0;box-sizing:border-box;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
 #wrap{width:100%;height:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
 canvas{display:block;border-radius:4px;background:#0c1b30;touch-action:none;outline:none;max-width:100%}
@@ -27,11 +28,11 @@ canvas:focus-visible{border-color:var(--accent)}
 const W=360,H=540,DPR=Math.min(3,Math.max(2,window.devicePixelRatio||1));
 const cv=document.getElementById('game'),ctx=cv.getContext('2d'),wrap=document.getElementById('wrap');
 let VW=W,VH=H,OX=0,OY=0,RESERVE=0;
-function fit(){wrap.style.paddingBottom=RESERVE+'px';const aw=Math.max(1,wrap.clientWidth),ah=Math.max(1,wrap.clientHeight-RESERVE),r=aw/ah;let nw=W,nh=H;
+function fit(){wrap.style.paddingBottom=RESERVE+'px';const vv=window.visualViewport,aw=Math.max(1,Math.min(wrap.clientWidth,vv?vv.width-16:1e9)),ah=Math.max(1,Math.min(wrap.clientHeight-RESERVE,vv?vv.height-RESERVE-12:1e9)),r=aw/ah;let nw=W,nh=H;
  if(r>=W/H)nw=Math.min(900,Math.round(H*r));else nh=Math.min(860,Math.round(W/r));
  if(nw!==VW||nh!==VH||cv.width!==nw*DPR){VW=nw;VH=nh;OX=Math.floor((VW-W)/2);OY=Math.floor((VH-H)/2);cv.width=VW*DPR;cv.height=VH*DPR;}
- const s=Math.min(aw/VW,ah/VH);cv.style.width=Math.floor(VW*s)+'px';cv.style.height=Math.floor(VH*s)+'px';}
-addEventListener('resize',fit);fit();
+ const s=Math.min(aw/VW,ah/VH)*.94;cv.style.width=Math.floor(VW*s)+'px';cv.style.height=Math.floor(VH*s)+'px';}
+addEventListener('resize',fit);if(window.visualViewport)visualViewport.addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,300));fit();
 /* Signed-out viewers get Claude's sign-in bar along the bottom; keep the game above it. */
 (async()=>{try{if(!window.claude||typeof window.claude.use!=='function')return;const u=await window.claude.use('user');if(!u){RESERVE=innerWidth<700?108:80;fit();}}catch(e){}})();
 
@@ -76,8 +77,8 @@ function drawBtn(b){if(b.hidden)return;const oy=b===pressed?3:0,r=Math.min(14,b.
  const tc=b.disabled?C.gray:(b.tc===C.white&&lum(fill)>.62?C.ink:b.tc);txt(b.label,b.x+b.w/2,b.y+oy+b.h/2+(b.sub?-6:0),b.size,tc);if(b.sub)txt(b.sub,b.x+b.w/2,b.y+oy+b.h/2+9,16,tc,'center',VT);}
 
 /* ---------- audio ---------- */
-let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-try{muted=localStorage.getItem('ww-muted')==='1';}catch(e){}
+let AC=null,master=null,musicBus=null,sfxBus=null,drumBus=null,NOISE=null,muted=false,unlocked=false,keepAlive=null;const VOL=.85;const GAME_VERSION='v20 · funk';const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+
 const SILENT=(()=>{const n=1600,buf=new Uint8Array(44+n),dv=new DataView(buf.buffer),w=(o,s)=>{for(let i=0;i<s.length;i++)buf[o+i]=s.charCodeAt(i);};w(0,'RIFF');dv.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,8000,true);dv.setUint32(28,8000,true);dv.setUint16(32,1,true);dv.setUint16(34,8,true);w(36,'data');dv.setUint32(40,n,true);buf.fill(128,44);let s='';for(const b of buf)s+=String.fromCharCode(b);return 'data:audio/wav;base64,'+btoa(s);})();
 function initAudio(){
  if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=muted?0:VOL;master.connect(AC.destination);
@@ -95,7 +96,7 @@ function initAudio(){
    const p=keepAlive.play();if(p&&p.then)p.then(()=>{if(AC&&AC.state==='running')unlocked=true;}).catch(()=>{});}catch(e){}
   if(AC){try{const s=AC.createBufferSource();s.buffer=AC.createBuffer(1,1,22050);s.connect(AC.destination);s.start(0);}catch(e){}if(AC.state==='running'&&keepAlive&&!keepAlive.paused)unlocked=true;}}
 }
-function toggleMute(){muted=!muted;if(master)master.gain.value=muted?0:VOL;try{localStorage.setItem('ww-muted',muted?'1':'0');}catch(e){}}
+function toggleMute(){muted=!muted;if(master)master.gain.value=muted?0:VOL;}
 function note(f,dur,type,vol,when,bus,att=.01){if(!AC)return;const t=AC.currentTime+Math.max(0,when);const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+Math.max(att+.05,dur));o.connect(g);g.connect(bus);o.start(t);o.stop(t+dur+.1);}
 function tone(f,dur,type='square',vol=.5,when=0,slide=0){if(!AC)return;const t=AC.currentTime+Math.max(0,when);const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(sfxBus);o.start(t);o.stop(t+dur+.02);}
 const mf=m=>440*Math.pow(2,(m-69)/12);
@@ -476,7 +477,7 @@ const Title={enter(){this.buttons=[btn('START',90,404,180,52,()=>{initAudio();Mu
   const bob=Math.sin(t*3)*2;txtG('WOUND WARRIORS',180,146+bob,22);txtS('REVENGE OF THE EHR',180,172,8,C.gold);drawRank(180,192,140);
   const c=ALL[Math.floor(t/1.4)%ALL.length];drawPerson(50,262,4.6,c,{dance:t,seed:3});loveEmote(78,238,t);txt(c.name.toUpperCase(),78,358,7,C.white);txt(moveName(t,3),78,371,6,C.gold);
   ctx.save();ctx.translate(200,240);ctx.scale(.6,.6);drawBossBody({hp:1,max:1,flash:0},-46,t,140);ctx.restore();stressEmote(272,226,t);
-  fitTxt('Heal patients. Survive the charting.',180,390,330,20,C.pink2);if(IOS&&!muted)fitTxt('🔊 No sound? Turn off your iPhone’s silent switch',180,514,330,15,C.gray);txt('AN INTEGUMETRIX ARCADE ORIGINAL',180,530,5,C.gray);}
+  fitTxt('Heal patients. Survive the charting.',180,390,330,20,C.pink2);if(!AC||AC.state!=='running'){ctx.globalAlpha=.6+.4*Math.sin(t*4);fitTxt('🔊 Tap anywhere to start the music',180,514,330,17,C.white);ctx.globalAlpha=1;}else if(IOS&&!muted)fitTxt('🔊 No sound? Turn off your iPhone’s silent switch',180,514,330,15,C.gray);txt('AN INTEGUMETRIX ARCADE ORIGINAL',180,530,5,C.gray);txt(GAME_VERSION,352,530,5,C.gray,'right');}
 };
 
 const ROYAL_LINES=[['CHOOSE YOUR FIGHTER!','King Brook'],['Choose wisely...','Queen Tisha'],['The EHR awaits.','King Brook'],['Who dares face MEGA-CHART?','Queen Tisha']];
@@ -839,7 +840,7 @@ function toL(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r
 ['touchstart','touchmove'].forEach(ev=>cv.addEventListener(ev,e=>{if(e.cancelable)e.preventDefault();},{passive:false}));
 ['gesturestart','gesturechange'].forEach(ev=>document.addEventListener&&document.addEventListener(ev,e=>{if(e.cancelable)e.preventDefault();},{passive:false}));
 
-['touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener&&document.addEventListener(ev,()=>{initAudio();if(scene===Title&&!Music.name)Music.play('funk');},{passive:true}));
+['touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener&&document.addEventListener(ev,()=>{initAudio();if((scene===Title||scene===Select||scene===Board)&&!Music.name)Music.play('funk');},{passive:true}));
 document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AC&&AC.state!=='running'){try{AC.resume();}catch(e){}}});
 cv.addEventListener('pointerdown',e=>{e.preventDefault();cv.focus();initAudio();if(scene===Title)Music.play('funk');const p=toL(e);ptr.x=p.x;ptr.y=p.y;ptr.down=true;G.idle=0;try{cv.setPointerCapture(e.pointerId);}catch(_){}
  if(p.x>=330&&p.y<=22){toggleMute();return;}
